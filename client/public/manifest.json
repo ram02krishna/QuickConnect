@@ -1,6 +1,6 @@
 {
-  "name": "Orbix - Connect Beyond Boundaries",
-  "short_name": "Orbix",
+  "name": "QuickConnect - Connect Beyond Boundaries",
+  "short_name": "QuickConnect",
   "description": "A modern chat application.",
   "start_url": "/",
   "display": "standalone",

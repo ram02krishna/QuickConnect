@@ -24,7 +24,7 @@ export default function ChatsPage() {
           </svg>
         </div>
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
-          Welcome to Orbix
+          Welcome to QuickConnect
         </h1>
         <p className="text-base text-zinc-500 dark:text-zinc-400 max-w-sm">
           Select an existing conversation from the sidebar or start a new one to begin messaging.

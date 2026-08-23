@@ -59,7 +59,7 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthCard title="Welcome Back" subtitle="Sign in to your Orbix account">
+    <AuthCard title="Welcome Back" subtitle="Sign in to your QuickConnect account">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3.5 rounded-xl border border-red-500/20 bg-red-500/10 text-base text-red-400 font-medium">

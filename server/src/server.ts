@@ -31,7 +31,7 @@ async function startServer() {
     console.log("Database connected");
 
     httpServer.listen(PORT, () => {
-      console.log(`Orbix server running on port ${PORT} (${env.NODE_ENV})`);
+      console.log(`QuickConnect server running on port ${PORT} (${env.NODE_ENV})`);
       console.log(`Client: ${env.CLIENT_URL}`);
       console.log(`Health: http://localhost:${PORT}/health`);
     });

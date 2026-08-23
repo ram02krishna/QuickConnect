@@ -52,7 +52,7 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
         name: partner?.name || "User",
         username: partner?.username || "user",
         avatarUrl: partner?.avatarUrl,
-        bio: (partner as any)?.bio || "Hey there! I am using Orbix.",
+        bio: (partner as any)?.bio || "Hey there! I am using QuickConnect.",
         id: partner?.id || "",
         email: partner?.email || null,
       };

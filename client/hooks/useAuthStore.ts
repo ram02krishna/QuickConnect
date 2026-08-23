@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => set({ user: null, token: null }),
     }),
     {
-      name: "orbix-auth", 
+      name: "quickconnect-auth", 
     }
   )
 );

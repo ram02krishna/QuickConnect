@@ -436,7 +436,7 @@ export function Sidebar() {
             <div className="flex flex-col items-center justify-center py-16 text-center px-4">
               <div className="relative mb-4">
                 <div className="h-16 w-16 rounded-2xl flex items-center justify-center">
-                  <img src="/logo.png" alt="Orbix Logo" className="w-12 h-12 object-contain opacity-70" />
+                  <img src="/logo.png" alt="QuickConnect Logo" className="w-12 h-12 object-contain opacity-70" />
                 </div>
               </div>
               <p className="text-base font-bold text-zinc-700 dark:text-zinc-300">

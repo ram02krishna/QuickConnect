@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
       title={step === 1 ? "Reset Password" : "New Password"}
       subtitle={
         step === 1
-          ? "Recover your Orbix account credentials"
+          ? "Recover your QuickConnect account credentials"
           : `Set a new secure password`
       }
     >

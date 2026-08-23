@@ -1,6 +1,6 @@
-## Orbix - Connect Beyond Boundaries
+# QuickConnect - Connect Beyond Boundaries
 
-Orbix is a full-stack real-time chat application designed to provide seamless and instant communication. Built with a modern tech stack and a beautifully crafted UI using a cohesive **blue color theme**, Orbix delivers a premium user experience featuring secure authentication, rich media sharing, peer-to-peer calling, and real-time messaging.
+QuickConnect is a full-stack real-time chat application designed to provide seamless and instant communication. Built with a modern tech stack and a beautifully crafted UI using a cohesive **blue color theme**, QuickConnect delivers a premium user experience featuring secure authentication, rich media sharing, peer-to-peer calling, and real-time messaging.
 
 ---
 
@@ -45,7 +45,7 @@ Orbix is a full-stack real-time chat application designed to provide seamless an
 ## Project Structure
 
 ```text
-Orbix/
+QuickConnect/
 ├── client/                 # Next.js frontend application
 │   ├── app/                # Next.js App Router layout and pages
 │   ├── components/         # Reusable UI components
@@ -75,7 +75,7 @@ Follow these instructions to set up the project locally.
 ### 1. Clone the repository
 ```bash
 git clone https://github.com/ram02krishna/Orbix---Connect-Beyond-Boundaries.git
-cd Orbix---Connect-Beyond-Boundaries
+cd QuickConnect
 ```
 
 ### 2. Backend Setup

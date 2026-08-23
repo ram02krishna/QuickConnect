@@ -17,10 +17,10 @@ async function sendAndStoreOTP(email: string) {
 
   await sendMail({
     to: email,
-    subject: "Verify your Orbix account",
+    subject: "Verify your QuickConnect account",
     html: `
       <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-        <h2>Welcome to Orbix!</h2>
+        <h2>Welcome to QuickConnect!</h2>
         <p>Please use the following 6-digit code to verify your email. It expires in 15 minutes.</p>
         <div style="background-color: #f4f4f5; padding: 20px; text-align: center; border-radius: 8px; margin: 24px 0;">
           <h1 style="margin: 0; letter-spacing: 4px; color: #18181b;">${otp}</h1>
@@ -44,7 +44,7 @@ async function sendPasswordResetOTP(email: string) {
 
   await sendMail({
     to: email,
-    subject: "Reset your Orbix password",
+    subject: "Reset your QuickConnect password",
     html: `
       <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
         <h2>Password Reset Request</h2>

@@ -37,12 +37,12 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("connect", () => {
       set({ isConnected: true });
-      console.log("🔌 Connected to Orbix WebSocket");
+      console.log("🔌 Connected to QuickConnect WebSocket");
     });
 
     socket.on("disconnect", () => {
       set({ isConnected: false });
-      console.log("🔌 Disconnected from Orbix WebSocket");
+      console.log("🔌 Disconnected from QuickConnect WebSocket");
     });
 
     // message events

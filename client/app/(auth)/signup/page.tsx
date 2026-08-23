@@ -46,7 +46,7 @@ export default function SignupPage() {
   };
 
   return (
-    <AuthCard title="Create Account" subtitle="Join Orbix and start messaging">
+    <AuthCard title="Create Account" subtitle="Join QuickConnect and start messaging">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3.5 rounded-xl border border-red-500/20 bg-red-500/10 text-base text-red-400 font-medium">

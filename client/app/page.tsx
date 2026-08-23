@@ -11,8 +11,8 @@ export default function LandingPage() {
       <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-950/50 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Orbix Logo" className="w-8 h-8 rounded-xl object-contain" />
-            <span className="font-bold text-xl tracking-tight">Orbix</span>
+            <img src="/logo.png" alt="QuickConnect Logo" className="w-8 h-8 rounded-xl object-contain" />
+            <span className="font-bold text-xl tracking-tight">QuickConnect</span>
           </div>
           <nav className="flex items-center gap-4">
             <Link href="/login" className="text-sm font-medium hover:text-brand-primary transition-colors">
@@ -79,7 +79,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-200 dark:border-zinc-800 py-8 text-center text-zinc-500 dark:text-zinc-400 text-sm bg-white dark:bg-zinc-950">
-        <p>Orbix © {new Date().getFullYear()}. Created as a demonstration project.</p>
+        <p>QuickConnect © {new Date().getFullYear()}. Created as a demonstration project.</p>
       </footer>
     </div>
   );
