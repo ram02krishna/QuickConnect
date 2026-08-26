@@ -33,7 +33,7 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
   const upsertChat = useChatStore((state) => state.upsertChat);
 
   const [showProfilePanel, setShowProfilePanel] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [hasSetSelected, setHasSetSelected] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
