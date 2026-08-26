@@ -66,16 +66,22 @@ let audioCtx: AudioContext | null = null;
 let ringGain: GainNode | null = null;
 let ringInterval: any = null;
 
+// Scales normalized 0..1 volume to a gentle, comfortable acoustic gain curve.
+function computeComfortGain(vol: number): number {
+  const clamped = Math.max(0, Math.min(1, vol));
+  return Math.pow(clamped, 1.2) * 0.25;
+}
+
 const getInitialRingVolume = (): number => {
-  if (typeof window === "undefined") return 0.5;
+  if (typeof window === "undefined") return 0.3; // default to a comfortable 30%
   try {
     const saved = localStorage.getItem("quickconnect_call_ring_volume");
     if (saved !== null) {
       const parsed = parseFloat(saved);
-      if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) return parsed;
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) return Math.round(parsed * 100) / 100;
     }
   } catch {}
-  return 0.5;
+  return 0.3;
 };
 
 function startRingtone(type: "dial" | "ring") {
@@ -90,8 +96,9 @@ function startRingtone(type: "dial" | "ring") {
     stopRingtone();
     ringGain = audioCtx.createGain();
     const volume = useCallStore.getState().ringVolume;
-    ringGain.gain.setValueAtTime(volume, audioCtx.currentTime);
-    ringGain.gain.value = volume;
+    const targetGain = computeComfortGain(volume);
+    ringGain.gain.setValueAtTime(targetGain, audioCtx.currentTime);
+    ringGain.gain.value = targetGain;
     ringGain.connect(audioCtx.destination);
 
     const playBeep = () => {
@@ -314,7 +321,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
     ringVolume: getInitialRingVolume(),
 
     setRingVolume: (volume) => {
-      const clamped = Math.max(0, Math.min(1, volume));
+      const clamped = Math.max(0, Math.min(1, Math.round(volume * 100) / 100));
       set({ ringVolume: clamped });
       try {
         if (typeof window !== "undefined") {
@@ -323,9 +330,10 @@ export const useCallStore = create<CallStoreState>((set, get) => {
       } catch {}
       if (ringGain && audioCtx) {
         try {
+          const targetGain = computeComfortGain(clamped);
           ringGain.gain.cancelScheduledValues(audioCtx.currentTime);
-          ringGain.gain.setValueAtTime(clamped, audioCtx.currentTime);
-          ringGain.gain.value = clamped;
+          ringGain.gain.setValueAtTime(targetGain, audioCtx.currentTime);
+          ringGain.gain.value = targetGain;
         } catch {}
       }
     },

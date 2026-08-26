@@ -132,7 +132,7 @@ export function CallOverlay() {
     }
   }, [ringVolume]);
 
-  // Handle volume control via keys F2/- (Volume Down) and F3/+/= (Volume Up)
+  // Handle volume control via keys F2/- (Volume Down by 1%) and F3/+/= (Volume Up by 1%)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (callState === "idle") return;
@@ -140,15 +140,17 @@ export function CallOverlay() {
       if (e.key === "F2" || e.key === "-") {
         e.preventDefault();
         const currentVol = useCallStore.getState().ringVolume;
-        const newVol = Math.max(0, Math.round((currentVol - 0.1) * 10) / 10);
+        const delta = e.shiftKey ? 0.05 : 0.01;
+        const newVol = Math.max(0, Math.round((currentVol - delta) * 100) / 100);
         setRingVolume(newVol);
-        toast.info(`Volume: ${Math.round(newVol * 100)}%`, { id: "call-volume", duration: 1200 });
+        toast.info(`Volume: ${Math.round(newVol * 100)}%`, { id: "call-volume", duration: 1000 });
       } else if (e.key === "F3" || e.key === "+" || e.key === "=") {
         e.preventDefault();
         const currentVol = useCallStore.getState().ringVolume;
-        const newVol = Math.min(1, Math.round((currentVol + 0.1) * 10) / 10);
+        const delta = e.shiftKey ? 0.05 : 0.01;
+        const newVol = Math.min(1, Math.round((currentVol + delta) * 100) / 100);
         setRingVolume(newVol);
-        toast.info(`Volume: ${Math.round(newVol * 100)}%`, { id: "call-volume", duration: 1200 });
+        toast.info(`Volume: ${Math.round(newVol * 100)}%`, { id: "call-volume", duration: 1000 });
       }
     };
 
@@ -288,14 +290,30 @@ export function CallOverlay() {
 
             {/* Volume Slider Popup */}
             {showVolumeSlider && (
-              <div className="absolute right-0 top-12 z-40 bg-zinc-900/95 border border-white/15 backdrop-blur-xl p-3 rounded-2xl shadow-2xl flex flex-col items-center gap-2 w-48">
+              <div className="absolute right-0 top-12 z-40 bg-zinc-900/95 border border-white/15 backdrop-blur-xl p-3.5 rounded-2xl shadow-2xl flex flex-col items-center gap-2.5 w-60">
                 <div className="flex items-center justify-between w-full text-xs text-zinc-300 font-medium">
-                  <span>Device Volume</span>
-                  <span className="font-mono text-emerald-400">{Math.round(ringVolume * 100)}%</span>
+                  <span>Call Volume</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={Math.round(ringVolume * 100)}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val)) {
+                          setRingVolume(Math.max(0, Math.min(100, val)) / 100);
+                        }
+                      }}
+                      className="w-10 text-center bg-zinc-800 border border-white/10 rounded px-1 py-0.5 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
+                    />
+                    <span className="font-mono text-emerald-400 text-xs">%</span>
+                  </div>
                 </div>
+
                 <div className="flex items-center gap-2 w-full">
                   <button
-                    onClick={() => setRingVolume(ringVolume === 0 ? 0.5 : 0)}
+                    onClick={() => setRingVolume(ringVolume === 0 ? 0.2 : 0)}
                     className="p-1 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                     title={ringVolume === 0 ? "Unmute" : "Mute"}
                   >
@@ -305,13 +323,33 @@ export function CallOverlay() {
                     type="range"
                     min="0"
                     max="1"
-                    step="0.05"
+                    step="0.01"
                     value={ringVolume}
                     onChange={(e) => setRingVolume(parseFloat(e.target.value))}
                     className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                   />
                 </div>
-                <span className="text-[10px] text-zinc-500">Press F2/F3 or +/- to adjust</span>
+
+                {/* Quick Precision Presets */}
+                <div className="flex items-center justify-between w-full pt-1 border-t border-white/10 text-[11px]">
+                  {[0, 0.05, 0.12, 0.25, 0.5, 0.8, 1].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => setRingVolume(preset)}
+                      className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                        Math.round(ringVolume * 100) === Math.round(preset * 100)
+                          ? "bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
+                      }`}
+                    >
+                      {preset === 0 ? "0%" : `${Math.round(preset * 100)}%`}
+                    </button>
+                  ))}
+                </div>
+
+                <span className="text-[10px] text-zinc-500 text-center w-full">
+                  Press - / + or F2 / F3 for 1% step
+                </span>
               </div>
             )}
           </div>
