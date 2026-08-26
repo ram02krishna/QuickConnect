@@ -21,6 +21,7 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
   const router = useRouter();
 
   const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
   const socket = useSocketStore((state) => state.socket);
   const isConnected = useSocketStore((state) => state.isConnected);
   
@@ -29,20 +30,13 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
   const messages = useChatStore((state) => state.messages[chatId] ?? EMPTY_MESSAGES);
   const setMessages = useChatStore((state) => state.setMessages);
   const addMessage = useChatStore((state) => state.addMessage);
+  const upsertChat = useChatStore((state) => state.upsertChat);
 
   const [showProfilePanel, setShowProfilePanel] = useState(false);
-  const [loading, setLoading] = useState(() => {
-    const cached = useChatStore.getState().messages[chatId];
-    return !cached || cached.length === 0;
-  });
+  const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [hasSetSelected, setHasSetSelected] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  // Reset loading status when chatId changes to support fast transitions if cache exists
-  useEffect(() => {
-    const cached = useChatStore.getState().messages[chatId];
-    setLoading(!cached || cached.length === 0);
-  }, [chatId]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -97,20 +91,31 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
     };
   }, [chatId, socket, isConnected, setSelectedChatId]);
 
-  // 2. Fetch Messages from REST API
+  // 2. Strict Authentication & Membership Verification on Direct URL Open
   useEffect(() => {
-    const fetchMessages = async () => {
-      const cached = useChatStore.getState().messages[chatId];
-      if (cached && cached.length > 0) {
-        setLoading(false);
+    let isCancelled = false;
+
+    const verifyAndLoadChat = async () => {
+      const currentToken = useAuthStore.getState().token;
+      if (!currentToken) {
+        window.location.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
-      if (!cached || cached.length === 0) {
-        setLoading(true);
-      }
+
+      setLoading(true);
       try {
-        const res = await api.get(`/messages/${chatId}`);
-        const fetchedMessages = res.data.data.messages;
+        // Step A: Verify chat existence and user membership with backend
+        const chatRes = await api.get(`/chats/${chatId}`);
+        if (isCancelled) return;
+        
+        const fetchedChat = chatRes.data.data.chat;
+        upsertChat(fetchedChat);
+
+        // Step B: Fetch messages for this verified chat
+        const msgRes = await api.get(`/messages/${chatId}`);
+        if (isCancelled) return;
+
+        const fetchedMessages = msgRes.data.data.messages;
         setMessages(chatId, fetchedMessages);
         if (fetchedMessages.length < 30) {
           useChatStore.getState().setHasMoreMessages(chatId, false);
@@ -118,29 +123,33 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
           useChatStore.getState().setHasMoreMessages(chatId, true);
         }
       } catch (err: any) {
-        console.error("Failed to fetch messages:", err);
+        if (isCancelled) return;
+        console.error("Chat verification error:", err);
+        
         if (err.response?.status === 401) {
           useAuthStore.getState().logout();
-          router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+          window.location.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
         } else if (err.response?.status === 403 || err.response?.status === 404) {
-          toast.error("You do not have access to this chat.");
+          setAccessDenied(true);
+          toast.error("You are not authorized to access this conversation.");
           router.replace("/chats");
         }
       } finally {
-        setLoading(false);
+        if (!isCancelled) setLoading(false);
       }
     };
 
-    if (isConnected) {
-      void fetchMessages();
-    }
-  }, [chatId, setMessages, isConnected, router]);
+    void verifyAndLoadChat();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [chatId, upsertChat, setMessages, router]);
 
   // 3. Mark messages as read when chat is opened or new messages load in
   useEffect(() => {
     if (!socket || !isConnected || !user?.id || messages.length === 0) return;
 
-    // Emit message:read for all messages from others that haven't been read by me yet
     const unreadMessages = messages.filter(
       (m) =>
         m.senderId !== user.id &&
@@ -240,6 +249,15 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
       setLoadingMore(false);
     }
   }, [chatId, messages, loadingMore]);
+
+  if (accessDenied) {
+    return (
+      <div className="chat-canvas flex-1 flex flex-col items-center justify-center h-full text-zinc-500 gap-3 p-6 select-none">
+        <p className="text-base font-bold text-zinc-900 dark:text-zinc-100">Access Denied</p>
+        <p className="text-xs text-zinc-500">You are not authorized to view this chat.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="chat-canvas flex-1 flex h-full min-w-0 text-zinc-900 dark:text-zinc-100 relative overflow-hidden">

@@ -17,7 +17,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   
   const token = useAuthStore((state) => state.token);
   const connectSocket = useSocketStore((state) => state.connectSocket);
-  const disconnectSocket = useSocketStore((state) => state.disconnectSocket);
   const setChats = useChatStore((state) => state.setChats);
   const setOnlineStatuses = useChatStore((state) => state.setOnlineStatuses);
 
@@ -29,11 +28,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     setMounted(true);
     
-    // Check if store has already hydrated
     if (useAuthStore.persist.hasHydrated()) {
       setIsHydrated(true);
     } else {
-      // Subscribe to hydration finish
       const unsub = useAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
       return () => {
         if (unsub) unsub();
@@ -41,14 +38,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
+  // Force redirect to login if unauthenticated
   useEffect(() => {
     if (isHydrated && mounted) {
-      if (!token) {
+      const currentToken = useAuthStore.getState().token;
+      if (!currentToken) {
         const returnUrl = pathname && pathname !== "/" ? `?redirect=${encodeURIComponent(pathname)}` : "";
-        router.replace(`/login${returnUrl}`);
+        window.location.replace(`/login${returnUrl}`);
       }
     }
-  }, [isHydrated, mounted, token, router, pathname]);
+  }, [isHydrated, mounted, token, pathname]);
 
   // Connect socket and fetch chats list on mount
   useEffect(() => {
@@ -57,7 +56,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     // Connect socket
     connectSocket(token);
 
-    // Fetch user chats
+    // Fetch and verify user chats
     const fetchData = async () => {
       try {
         const chatsRes = await api.get("/chats");
@@ -74,17 +73,17 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         console.error("Failed to load chats:", err);
         if (err.response?.status === 401) {
           useAuthStore.getState().logout();
-          router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+          window.location.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
         }
       }
     };
 
     void fetchData();
-  }, [token, connectSocket, setChats, setOnlineStatuses, router, pathname]);
+  }, [token, connectSocket, setChats, setOnlineStatuses, pathname]);
 
   if (!mounted || !isHydrated || !token) {
     return (
-      <div className="flex h-[100dvh] w-full items-center justify-center bg-white dark:bg-zinc-950">
+      <div className="flex h-[100dvh] w-full items-center justify-center bg-white dark:bg-zinc-950 select-none">
         <div className="flex flex-col items-center gap-3 animate-pulse">
           <img src="/logo.png" alt="QuickConnect" className="h-12 w-12 object-contain" />
           <div className="h-1.5 w-24 rounded-full bg-sky-500/30 overflow-hidden">
