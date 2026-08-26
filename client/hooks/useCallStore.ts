@@ -80,7 +80,7 @@ const getInitialRingVolume = (): number => {
       const parsed = parseFloat(saved);
       if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) return Math.round(parsed * 100) / 100;
     }
-  } catch {}
+  } catch { }
   return 0.3;
 };
 
@@ -135,7 +135,7 @@ function startRingtone(type: "dial" | "ring") {
 
 function stopRingtone() {
   if (ringInterval) { clearInterval(ringInterval); ringInterval = null; }
-  try { ringGain?.disconnect(); } catch {}
+  try { ringGain?.disconnect(); } catch { }
   ringGain = null;
 }
 
@@ -250,8 +250,8 @@ export const useCallStore = create<CallStoreState>((set, get) => {
     const { localStream, remoteStream, peerConnection, peerConnections, remoteStreams } = get();
     if (localStream) localStream.getTracks().forEach((t) => t.stop());
     if (remoteStream) remoteStream.getTracks().forEach((t) => t.stop());
-    if (peerConnection) { try { peerConnection.close(); } catch {} }
-    Object.values(peerConnections).forEach((pc) => { try { pc.close(); } catch {} });
+    if (peerConnection) { try { peerConnection.close(); } catch { } }
+    Object.values(peerConnections).forEach((pc) => { try { pc.close(); } catch { } });
     Object.values(remoteStreams).forEach((s) => s.getTracks().forEach((t) => t.stop()));
     stopRingtone();
     pendingCandidates = [];
@@ -327,14 +327,14 @@ export const useCallStore = create<CallStoreState>((set, get) => {
         if (typeof window !== "undefined") {
           localStorage.setItem("quickconnect_call_ring_volume", clamped.toString());
         }
-      } catch {}
+      } catch { }
       if (ringGain && audioCtx) {
         try {
           const targetGain = computeComfortGain(clamped);
           ringGain.gain.cancelScheduledValues(audioCtx.currentTime);
           ringGain.gain.setValueAtTime(targetGain, audioCtx.currentTime);
           ringGain.gain.value = targetGain;
-        } catch {}
+        } catch { }
       }
     },
 
@@ -615,7 +615,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
 
     handleParticipantLeft: (userId) => {
       const { peerConnections, remoteStreams, participants } = get();
-      try { peerConnections[userId]?.close(); } catch {}
+      try { peerConnections[userId]?.close(); } catch { }
       const newPcs = { ...peerConnections };
       const newStreams = { ...remoteStreams };
       const newParticipants = { ...participants };

@@ -228,7 +228,7 @@ export function CallOverlay() {
           <div className="flex flex-col text-left">
             <span className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              {callType === "video" ? "WhatsApp Video Call" : "WhatsApp Voice Call"}
+              {callType === "video" ? "QuickConnect Video Call" : "QuickConnect Voice Call"}
             </span>
             <span className="text-xs text-zinc-400">
               {callState === "connected" ? (
@@ -332,11 +332,11 @@ export function CallOverlay() {
 
                 {/* Quick Precision Presets */}
                 <div className="flex items-center justify-between w-full pt-1 border-t border-white/10 text-[11px]">
-                  {[0, 0.05, 0.12, 0.25, 0.5, 0.8, 1].map((preset) => (
+                  {[0, 0.25, 0.5, 0.75, 1].map((preset) => (
                     <button
                       key={preset}
                       onClick={() => setRingVolume(preset)}
-                      className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
                         Math.round(ringVolume * 100) === Math.round(preset * 100)
                           ? "bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30"
                           : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
