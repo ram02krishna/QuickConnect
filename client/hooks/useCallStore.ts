@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useSocketStore } from "./useSocketStore";
 import { useAuthStore } from "./useAuthStore";
+import { useChatStore } from "./useChatStore";
 import { toast } from "sonner";
 
 interface CallPartner {
@@ -596,13 +597,25 @@ export const useCallStore = create<CallStoreState>((set, get) => {
     // Group Call: Peer connection management 
 
     handleParticipantJoined: async (userId) => {
-      const { callState, isGroupCall, callType } = get();
+      const { callState, isGroupCall, callType, groupChatId } = get();
       if ((callState !== "connected" && callState !== "outgoing") || !isGroupCall) return;
 
       if (callState === "outgoing") {
         set({ callState: "connected" });
         stopRingtone();
       }
+
+      const chat = groupChatId ? useChatStore.getState().chats.find((c) => c.id === groupChatId) : null;
+      const member = chat?.members?.find((m: any) => m.userId === userId);
+      const participantInfo: CallPartner = {
+        id: userId,
+        name: member?.user?.name || "Participant",
+        avatarUrl: member?.user?.avatarUrl || null,
+      };
+
+      set((state) => ({
+        participants: { ...state.participants, [userId]: participantInfo },
+      }));
 
       const pc = createGroupPeerConnection(userId, true);
 
@@ -628,9 +641,21 @@ export const useCallStore = create<CallStoreState>((set, get) => {
     },
 
     handleGroupOffer: async (fromUserId, sdp, callType) => {
-      const { callState, isGroupCall } = get();
+      const { callState, isGroupCall, groupChatId } = get();
       if ((callState !== "connected" && callState !== "outgoing") || !isGroupCall) return;
       if (callState === "outgoing") { set({ callState: "connected" }); stopRingtone(); }
+
+      const chat = groupChatId ? useChatStore.getState().chats.find((c) => c.id === groupChatId) : null;
+      const member = chat?.members?.find((m: any) => m.userId === fromUserId);
+      const participantInfo: CallPartner = {
+        id: fromUserId,
+        name: member?.user?.name || "Participant",
+        avatarUrl: member?.user?.avatarUrl || null,
+      };
+
+      set((state) => ({
+        participants: { ...state.participants, [fromUserId]: participantInfo },
+      }));
 
       const pc = createGroupPeerConnection(fromUserId, false);
 

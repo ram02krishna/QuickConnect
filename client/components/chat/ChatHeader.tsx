@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, MoreVertical, Phone, Video, ArrowLeft, Image as ImageIcon, VolumeX, Menu, Info, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, MoreVertical, Phone, Video, ArrowLeft, Image as ImageIcon, VolumeX, Menu, Info, Trash2, ChevronUp, ChevronDown, X } from "lucide-react";
 import { useAuthStore } from "@hooks/useAuthStore";
 import { useChatStore } from "@hooks/useChatStore";
 import { useUIStore } from "@hooks/useUIStore";
@@ -79,6 +79,7 @@ export function ChatHeader({
   const onlineStatuses = useChatStore((state) => state.onlineStatuses);
   const typingStatuses = useChatStore((state) => state.typingStatuses[chatId] ?? EMPTY_TYPING);
   const setChats = useChatStore((state) => state.setChats);
+  const deleteChat = useChatStore((state) => state.deleteChat);
   const setSelectedChatId = useChatStore((state) => state.setSelectedChatId);
   const initiateCall = useCallStore((state) => state.initiateCall);
   const initiateGroupCall = useCallStore((state) => state.initiateGroupCall);
@@ -89,13 +90,12 @@ export function ChatHeader({
     setMounted(true);
   }, []);
 
-
   const chat = chats.find((c) => c.id === chatId);
   if (!chat) return null;
 
   const getPartner = () => {
     if (chat.type === "DIRECT" && user) {
-      const partner = chat.members.find((m) => m.userId !== user.id)?.user;
+      const partner = chat.members?.find((m: any) => m.userId !== user.id)?.user;
       return partner || { name: "Saved Messages", avatarUrl: null, id: "" };
     }
     return { name: chat.title || "Group Chat", avatarUrl: chat.photoUrl || "/logo.png", id: "" };
@@ -104,7 +104,24 @@ export function ChatHeader({
   const partner = getPartner();
   const isOnline = chat.type === "DIRECT" && onlineStatuses[partner.id] === "online";
 
-  const canDeleteForEveryone = chat.type === "DIRECT" || chat.createdBy === user?.id;
+  const getTypingText = () => {
+    if (typingStatuses.length === 0) return null;
+    if (chat.type === "DIRECT") return "typing...";
+
+    const otherTypers = typingStatuses.filter((id) => id !== user?.id);
+    if (otherTypers.length === 0) return null;
+
+    const names = otherTypers.map((id) => {
+      const m = chat.members?.find((member: any) => member.userId === id);
+      return m?.user?.name ? m.user.name.split(" ")[0] : "Someone";
+    });
+
+    if (names.length === 1) return `${names[0]} is typing...`;
+    if (names.length === 2) return `${names[0]}, ${names[1]} are typing...`;
+    return `${names[0]} and ${names.length - 1} others are typing...`;
+  };
+
+  const typingText = getTypingText();
 
   const handleDeleteChat = () => {
     setShowDeleteModal(true);
@@ -113,61 +130,56 @@ export function ChatHeader({
   const performDelete = async (mode: "me" | "everyone") => {
     try {
       await api.delete(`/chats/${chatId}?mode=${mode}`);
-      setSelectedChatId(null);
+      deleteChat(chatId);
       setShowDeleteModal(false);
       router.push("/chats");
     } catch (err) {
-      console.error(`Failed to delete chat in mode ${mode}:`, err);
+      console.error("Failed to delete chat:", err);
     }
   };
 
   return (
     <>
-      <div className="surface-glass flex items-center justify-between px-4 h-[64px] border-b border-slate-200/70 dark:border-white/5 relative z-20 text-[#111b21] dark:text-[#e9edef] select-none shadow-sm shadow-slate-200/30 dark:shadow-none">
-        <div className="flex-1 flex items-center gap-3">
+      <header className="h-16 px-3 sm:px-4 border-b border-zinc-200/70 dark:border-white/5 flex items-center justify-between z-20 surface-glass text-zinc-900 dark:text-zinc-100 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
           <button
-            onClick={toggleSidebar}
-            className={`p-2 sm:p-1.5 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 active:bg-zinc-300/50 dark:active:bg-zinc-600/40 text-[#54656f] dark:text-[#aebac1] hover:text-zinc-950 dark:hover:text-white transition-colors cursor-pointer hidden md:block`}
-            title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+            onClick={() => router.push("/chats")}
+            className="md:hidden p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
+            aria-label="Back to chat list"
           >
-            <Menu size={20} />
-          </button>
-          
-          <button
-            onClick={() => {
-              if (isSearchOpen) {
-                if (setIsSearchOpen) setIsSearchOpen(false);
-                if (setSearchQuery) setSearchQuery("");
-              } else {
-                setSelectedChatId(null);
-                router.push("/chats");
-              }
-            }}
-            className={`p-2 sm:p-1.5 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 active:bg-zinc-300/50 dark:active:bg-zinc-600/40 text-[#54656f] dark:text-[#aebac1] hover:text-zinc-950 dark:hover:text-white transition-colors cursor-pointer ${isSearchOpen ? "" : "md:hidden"}`}
-          >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={18} />
           </button>
 
           {isSearchOpen ? (
-            <div className="flex-1 max-w-lg relative select-text flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1 max-w-xl">
               <div className="relative flex-1">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#667781] dark:text-[#8696a0]" />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
-                  placeholder="Search messages..."
-                  className="w-full pl-9 pr-8 py-1.5 rounded-full border border-[#e9edef]/20 dark:border-white/5 ios-glass-input text-base md:text-base text-zinc-900 dark:text-[#e9edef] placeholder-[#667781] dark:placeholder-[#8696a0] focus:outline-none"
+                  onChange={(e) => setSearchQuery?.(e.target.value)}
+                  placeholder="Search in this chat..."
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm rounded-full pl-9 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-sky-500 border border-zinc-200 dark:border-zinc-700"
                   autoFocus
                 />
+                <Search size={14} className="absolute left-3 top-2.5 text-zinc-400" />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery?.("")}
+                    className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    aria-label="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
-              <span className="text-xs tabular-nums text-[#667781] dark:text-[#8696a0] whitespace-nowrap" aria-live="polite">
-                {searchQuery.trim() ? `${searchMatchCount ? activeSearchMatch + 1 : 0}/${searchMatchCount}` : ""}
-              </span>
-              <div className="flex items-center">
+
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-zinc-400 whitespace-nowrap min-w-[36px] text-center">
+                  {searchMatchCount === 0 ? "0/0" : `${activeSearchMatch + 1}/${searchMatchCount}`}
+                </span>
                 <button
                   onClick={() => onSearchNavigate?.("up")}
-                  disabled={!searchMatchCount}
+                  disabled={searchMatchCount === 0}
                   className="p-1 rounded-full text-[#54656f] dark:text-[#aebac1] hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                   title="Previous match"
                   aria-label="Previous match"
@@ -176,7 +188,7 @@ export function ChatHeader({
                 </button>
                 <button
                   onClick={() => onSearchNavigate?.("down")}
-                  disabled={!searchMatchCount}
+                  disabled={searchMatchCount === 0}
                   className="p-1 rounded-full text-[#54656f] dark:text-[#aebac1] hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                   title="Next match"
                   aria-label="Next match"
@@ -199,14 +211,14 @@ export function ChatHeader({
                   {partner.name}
                 </h4>
                 <div className="flex items-center gap-1 mt-0.5">
-                  {typingStatuses.length > 0 ? (
-                    <span className="flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400">
-                      <span className="flex gap-0.5 items-center">
+                  {typingText ? (
+                    <span className="flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400 truncate max-w-[160px] sm:max-w-xs">
+                      <span className="flex gap-0.5 items-center flex-shrink-0">
                         <span className="typing-dot" />
                         <span className="typing-dot" />
                         <span className="typing-dot" />
                       </span>
-                      typing...
+                      <span className="truncate">{typingText}</span>
                     </span>
                   ) : isOnline ? (
                     <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -217,7 +229,7 @@ export function ChatHeader({
                     <span className="text-xs text-zinc-400 dark:text-zinc-500 first-letter:capitalize truncate max-w-[140px] sm:max-w-none">
                       {chat.type === "DIRECT" 
                         ? formatLastSeen(onlineStatuses[partner.id]) 
-                        : `${chat.members.length} members`}
+                        : `${chat.members?.length || 0} members`}
                     </span>
                   )}
                 </div>
@@ -297,7 +309,7 @@ export function ChatHeader({
             </>
           )}
         </div>
-      </div>
+      </header>
 
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 select-none">

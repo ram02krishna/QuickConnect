@@ -201,11 +201,12 @@ export function CallOverlay() {
 
   const activeRemoteStreams = Object.entries(remoteStreams);
   const numStreams = activeRemoteStreams.length;
+  const totalTiles = numStreams + (localStream && !isCameraOff ? 1 : 0);
 
   let gridCols = "grid-cols-1";
-  if (numStreams === 2) gridCols = "grid-cols-1 sm:grid-cols-2";
-  else if (numStreams >= 3 && numStreams <= 4) gridCols = "grid-cols-2 grid-rows-2";
-  else if (numStreams > 4) gridCols = "grid-cols-2 sm:grid-cols-3 grid-rows-2";
+  if (totalTiles === 2) gridCols = "grid-cols-1 sm:grid-cols-2";
+  else if (totalTiles >= 3 && totalTiles <= 4) gridCols = "grid-cols-2 grid-rows-2";
+  else if (totalTiles > 4) gridCols = "grid-cols-2 sm:grid-cols-3";
 
   const getVolumeIcon = () => {
     if (ringVolume === 0) return <VolumeX size={19} />;
@@ -516,6 +517,15 @@ export function CallOverlay() {
           <div className="absolute inset-0 h-full w-full bg-zinc-950 flex items-center justify-center">
             {isGroupCall ? (
               <div className={`w-full h-full grid ${gridCols} gap-2 p-2 sm:p-4`}>
+                {/* Local user tile in group video call */}
+                {localStream && !isCameraOff && (
+                  <div className="relative bg-zinc-900 rounded-2xl overflow-hidden border border-white/10 shadow-lg flex items-center justify-center">
+                    <VideoStream stream={localStream} objectFit="cover" isLocal={true} isMirrored={!isScreenSharing} />
+                    <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium border border-white/10 text-zinc-200">
+                      You {isMuted && "(Muted)"}
+                    </div>
+                  </div>
+                )}
                 {activeRemoteStreams.map(([userId, stream]) => (
                   <div
                     key={userId}
@@ -527,7 +537,7 @@ export function CallOverlay() {
                     </div>
                   </div>
                 ))}
-                {numStreams === 0 && (
+                {totalTiles === 0 && (
                   <div className="col-span-full h-full flex flex-col items-center justify-center bg-zinc-950 text-zinc-400 gap-3">
                     <Avatar src={displayAvatar} name={displayName || "?"} size="xl" />
                     <p className="text-sm font-semibold animate-pulse">Waiting for others to join...</p>

@@ -98,6 +98,8 @@ interface ChatState {
   clearStore: () => void;
 }
 
+const typingTimeouts: Record<string, NodeJS.Timeout> = {};
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set) => ({
@@ -368,7 +370,19 @@ export const useChatStore = create<ChatState>()(
 
       setSelectedChatId: (chatId) => set({ selectedChatId: chatId }),
 
-      setUserTyping: (chatId, userId, isTyping) =>
+      setUserTyping: (chatId, userId, isTyping) => {
+        const timeoutKey = `${chatId}:${userId}`;
+        if (typingTimeouts[timeoutKey]) {
+          clearTimeout(typingTimeouts[timeoutKey]);
+          delete typingTimeouts[timeoutKey];
+        }
+
+        if (isTyping) {
+          typingTimeouts[timeoutKey] = setTimeout(() => {
+            useChatStore.getState().setUserTyping(chatId, userId, false);
+          }, 3500);
+        }
+
         set((state) => {
           const typers = state.typingStatuses[chatId] || [];
           let newTypers = [...typers];
@@ -382,7 +396,8 @@ export const useChatStore = create<ChatState>()(
           return {
             typingStatuses: { ...state.typingStatuses, [chatId]: newTypers },
           };
-        }),
+        });
+      },
 
       setOnlineStatus: (userId, status) =>
         set((state) => ({
