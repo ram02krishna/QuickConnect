@@ -12,7 +12,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "QuickConnect - Connect Beyond Boundaries",
+  title: "QuickConnect",
   description: "A beautiful, real-time chat application inspired by WhatsApp and modern messengers.",
   manifest: "/manifest.json",
 };

@@ -8,8 +8,9 @@ import { useUIStore } from "@hooks/useUIStore";
 export default function ChatsPage() {
   const { isSidebarOpen, toggleSidebar } = useUIStore();
   const router = useRouter();
+
   return (
-    <div className="chat-canvas flex-1 flex flex-col relative items-center justify-center p-6 sm:p-8 text-center overflow-hidden">
+    <div className="chat-canvas flex-1 flex flex-col relative items-center justify-center p-4 sm:p-6 text-center overflow-hidden select-none">
       {/* Sidebar Toggle for Desktop */}
       <button
         onClick={toggleSidebar}
@@ -19,20 +20,58 @@ export default function ChatsPage() {
         <Menu size={20} />
       </button>
 
-      <div className="surface-glass max-w-md flex flex-col items-center select-none space-y-4 rounded-3xl border border-white/70 dark:border-white/10 px-8 py-9 shadow-xl shadow-slate-200/50 dark:shadow-black/20">
-        <img src="/logo.png" alt="QuickConnect logo" className="h-24 w-24 object-contain mb-1" />
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Welcome to QuickConnect</h1>
+      {/* Main Welcome Card */}
+      <div className="surface-glass max-w-sm sm:max-w-md w-full flex flex-col items-center select-none space-y-4 rounded-3xl border border-zinc-200/80 dark:border-white/10 p-6 sm:p-8 shadow-xl shadow-slate-200/40 dark:shadow-black/30 backdrop-blur-xl">
+        <div className="relative">
+          <img
+            src="/logo.png"
+            alt="QuickConnect logo"
+            className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-md rounded-2xl"
+          />
         </div>
-        <p className="text-base leading-relaxed text-zinc-500 dark:text-zinc-400 max-w-sm">
-          Pick a conversation, search for someone new, or create a group to start sharing ideas.
-        </p>
-        <div className="grid grid-cols-2 gap-2 w-full pt-2 text-left">
-          <button type="button" onClick={() => { useUIStore.getState().setSidebarOpen(true); router.push("/chats?action=find-people"); }} className="rounded-xl bg-white/70 dark:bg-white/5 p-3 border border-zinc-100 dark:border-white/5 text-left transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md hover:shadow-sky-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"><Search className="mb-2 h-4 w-4 text-sky-600" /><p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Find people</p></button>
-          <button type="button" onClick={() => router.push("/chats?action=create-group")} className="rounded-xl bg-white/70 dark:bg-white/5 p-3 border border-zinc-100 dark:border-white/5 text-left transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md hover:shadow-sky-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"><Users className="mb-2 h-4 w-4 text-sky-600" /><p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Start a group</p></button>
+
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            Welcome to QuickConnect
+          </h1>
+          <p className="text-xs sm:text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 max-w-xs sm:max-w-sm mx-auto">
+            Pick a conversation, search for someone new, or create a group to start sharing ideas.
+          </p>
         </div>
-        <div className="pt-4 flex items-center justify-center gap-1.5 text-sm text-zinc-400">
-          <Lock size={12} />
+
+        {/* Quick Action Buttons */}
+        <div className="grid grid-cols-2 gap-2.5 w-full pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              useUIStore.getState().setSidebarOpen(true);
+              router.push("/chats?action=find-people");
+            }}
+            className="flex flex-col items-start p-3.5 rounded-2xl bg-zinc-50/80 dark:bg-white/5 border border-zinc-200/70 dark:border-white/5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-400/50 hover:shadow-md hover:shadow-sky-500/10 focus:outline-none cursor-pointer group"
+          >
+            <div className="h-8 w-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+              <Search size={16} />
+            </div>
+            <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Find people</p>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Search contacts</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/chats?action=create-group")}
+            className="flex flex-col items-start p-3.5 rounded-2xl bg-zinc-50/80 dark:bg-white/5 border border-zinc-200/70 dark:border-white/5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-md hover:shadow-emerald-500/10 focus:outline-none cursor-pointer group"
+          >
+            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+              <Users size={16} />
+            </div>
+            <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Start a group</p>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Team discussion</p>
+          </button>
+        </div>
+
+        {/* Security Footer */}
+        <div className="pt-2 flex items-center justify-center gap-1.5 text-xs text-zinc-400 font-medium">
+          <Lock size={12} className="text-zinc-400" />
           <span>Your conversations stay private</span>
         </div>
       </div>
