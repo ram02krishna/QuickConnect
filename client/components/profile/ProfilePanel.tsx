@@ -42,7 +42,7 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [memberSearchResults, setMemberSearchResults] = useState<any[]>([]);
   const [searchingMembers, setSearchingMembers] = useState(false);
-  const [actionInProgress, setActionInProgress] = useState<string | null>(null); // tracks memberId for async operations
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   // Resolve partner details for DMs
   const getPartner = () => {
@@ -59,9 +59,9 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
     }
     return {
       name: chat?.title || "Group Chat",
-      username: "group",
-      avatarUrl: chat?.photoUrl,
-      bio: `Group conversation • ${chat?.members.length || 0} members`,
+      username: `group-${chatId.slice(0, 6)}`,
+      avatarUrl: chat?.photoUrl || "/logo.png",
+      bio: "Group Chat with multiple participants",
       id: "",
       email: null,
     };
@@ -70,14 +70,27 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
   const partner = getPartner();
   const isOnline = chat?.type === "DIRECT" && onlineStatuses[partner.id] === "online";
 
-  // Attachments calculations
-  const attachments = messages.flatMap((m) => m.attachments || []);
-  const mediaFiles = attachments.filter((att) => att.mimeType.startsWith("image/") || att.mimeType.startsWith("video/"));
-  const documentFiles = attachments.filter((att) => !att.mimeType.startsWith("image/") && !att.mimeType.startsWith("video/"));
+  // Gather all attachments from messages in this chat
+  const allAttachments = messages.flatMap((m: any) => m.attachments || []);
+  const mediaFiles = allAttachments.filter(
+    (att: any) =>
+      att.fileType === "IMAGE" ||
+      att.fileType === "VIDEO" ||
+      att.mimeType?.startsWith("image/") ||
+      att.mimeType?.startsWith("video/")
+  );
+  const documentFiles = allAttachments.filter(
+    (att: any) =>
+      att.fileType === "DOCUMENT" ||
+      att.fileType === "FILE" ||
+      (!att.mimeType?.startsWith("image/") &&
+        !att.mimeType?.startsWith("video/") &&
+        !att.mimeType?.startsWith("audio/"))
+  );
 
-  // Search users to add to group
+  // Member search effect with debounce
   useEffect(() => {
-    if (memberSearchQuery.trim().length < 2) {
+    if (!memberSearchQuery.trim() || memberSearchQuery.length < 2) {
       setMemberSearchResults([]);
       return;
     }
@@ -86,14 +99,11 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
       setSearchingMembers(true);
       try {
         const res = await api.get(`/users/search?q=${encodeURIComponent(memberSearchQuery)}`);
-        // Filter out users who are already group members
-        const currentMemberIds = chat?.members.map((m) => m.userId) || [];
-        const filteredResults = res.data.data.users.filter(
-          (u: any) => !currentMemberIds.includes(u.id)
-        );
-        setMemberSearchResults(filteredResults);
+        const users = res.data.data.users || [];
+        const existingMemberIds = new Set(chat?.members.map((m: any) => m.userId));
+        setMemberSearchResults(users.filter((u: any) => !existingMemberIds.has(u.id)));
       } catch (err) {
-        console.error("Member search error:", err);
+        console.error("Failed to search users:", err);
       } finally {
         setSearchingMembers(false);
       }
@@ -109,13 +119,11 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
     window.location.href = downloadUrl;
   };
 
-  // Group roles resolution
-  const myRole = chat.createdBy === user?.id ? "OWNER" : "MEMBER";
   const isGroupManager = chat.createdBy === user?.id;
 
   const canRemoveMember = (member: any) => {
     if (member.userId === user?.id) return false;
-    return chat.createdBy === user?.id; // Only group creator can remove members
+    return chat.createdBy === user?.id;
   };
 
   // Group Info Edit
@@ -142,7 +150,6 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
     setActionInProgress(targetUser.id);
     try {
       await api.post(`/chats/${chat.id}/members`, { userId: targetUser.id });
-      // Refresh local store members
       const newMemberObj = {
         id: `temp-${Date.now()}`,
         userId: targetUser.id,
@@ -193,20 +200,20 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
   };
 
   return (
-    <div className="w-full sm:w-80 flex flex-col h-full bg-white dark:bg-gray-800 border-l border-gray-300 dark:border-gray-700 select-none text-gray-900 dark:text-gray-100 relative z-20">
+    <div className="w-full flex flex-col h-full bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 select-none text-zinc-900 dark:text-zinc-100 relative z-20 overflow-hidden">
       {/* Header */}
-      <div className="p-4 flex items-center justify-between border-b border-gray-300 dark:border-gray-700">
-        <h3 className="text-base font-bold text-[#111b21] dark:text-[#e9edef]">Contact Details</h3>
+      <div className="p-3.5 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">Contact Details</h3>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 text-[#54656f] dark:text-[#aebac1] hover:text-zinc-950 dark:hover:text-white transition-colors cursor-pointer"
+          className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
         >
           <X size={18} />
         </button>
       </div>
 
       {/* Profile Info */}
-      <div className="p-4 flex flex-col items-center text-center border-b border-gray-300 dark:border-gray-700">
+      <div className="p-4 flex flex-col items-center text-center border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <Avatar
           src={partner.avatarUrl}
           name={partner.name}
@@ -222,7 +229,7 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="flex-1 px-2.5 py-1.5 rounded-lg border border-[#b2e7a6]/60 dark:border-[#025041]/60 bg-white dark:bg-[#182229] text-base text-zinc-900 dark:text-zinc-100 focus:outline-none"
+              className="flex-1 px-2.5 py-1.5 rounded-lg border border-sky-500 bg-white dark:bg-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSaveTitle();
@@ -232,14 +239,14 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
             <button
               onClick={handleSaveTitle}
               disabled={savingTitle}
-              className="p-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer disabled:opacity-50"
+              className="p-1.5 bg-sky-500 text-white rounded-lg hover:bg-sky-600 cursor-pointer disabled:opacity-50"
             >
               {savingTitle ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 max-w-full">
-            <h4 className="text-xl font-bold truncate text-zinc-950 dark:text-white">{partner.name}</h4>
+          <div className="flex items-center gap-1.5 max-w-full">
+            <h4 className="text-base sm:text-lg font-bold truncate text-zinc-900 dark:text-zinc-100">{partner.name}</h4>
             {chat.type === "GROUP" && isGroupManager && (
               <button
                 onClick={() => {
@@ -255,36 +262,32 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
           </div>
         )}
 
-        <p className="text-base font-semibold text-[#667781] dark:text-[#8696a0] mt-0.5">
-          {chat.type === "DIRECT" ? `@${partner.username}` : `Group created by you/others`}
+        <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mt-0.5">
+          {chat.type === "DIRECT" ? `@${partner.username}` : `${chat.members.length} participants`}
         </p>
-        <p className="text-base text-zinc-650 dark:text-zinc-400 mt-2 px-2 italic line-clamp-2 leading-relaxed">
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-2 px-2 italic line-clamp-2 leading-relaxed">
           "{partner.bio}"
         </p>
 
-        {/* Dynamic Partner Details (Email for DMs) */}
-        {chat.type === "DIRECT" && (
-          <div className="w-full mt-3.5 space-y-2">
-            {partner.email && (
-              <div className="w-full flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl border border-[#e9edef]/35 dark:border-white/5 bg-white/10 dark:bg-black/10 text-left">
-                <span className="text-base uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500">Email Address</span>
-                <span className="text-base font-semibold truncate w-full text-zinc-800 dark:text-zinc-200 select-all">{partner.email}</span>
-              </div>
-            )}
-            {/* Block / Unblock direct contact */}
+        {chat.type === "DIRECT" && partner.email && (
+          <div className="w-full mt-3 space-y-1">
+            <div className="w-full flex flex-col items-start gap-0.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-left">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">Email Address</span>
+              <span className="text-xs font-semibold truncate w-full text-zinc-800 dark:text-zinc-200 select-all">{partner.email}</span>
+            </div>
           </div>
         )}
       </div>
 
       {/* Media / Files / Members Tabs */}
-      <div className="flex border-b border-gray-300 dark:border-gray-700 text-base font-semibold overflow-x-auto no-scrollbar">
+      <div className="flex border-b border-zinc-200 dark:border-zinc-800 text-xs font-semibold overflow-x-auto no-scrollbar bg-white dark:bg-zinc-900">
         {chat.type === "GROUP" && (
           <button
             onClick={() => setActiveTab("members")}
-            className={`px-3 py-3 text-center border-b-2 flex-shrink-0 cursor-pointer transition-colors ${
+            className={`px-3.5 py-2.5 text-center border-b-2 flex-shrink-0 cursor-pointer transition-colors ${
               activeTab === "members"
-                ? "border-[#0284c7] text-[#0284c7] dark:border-blue-500 dark:text-blue-400"
-                : "border-transparent text-[#667781] hover:text-[#111b21] dark:text-zinc-400 dark:hover:text-[#e9edef]"
+                ? "border-sky-500 text-sky-600 dark:text-sky-400 font-bold"
+                : "border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             }`}
           >
             Members ({chat.members.length})
@@ -292,20 +295,20 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
         )}
         <button
           onClick={() => setActiveTab("media")}
-          className={`px-3 py-3 text-center border-b-2 flex-shrink-0 cursor-pointer transition-colors ${
+          className={`px-3.5 py-2.5 text-center border-b-2 flex-shrink-0 cursor-pointer transition-colors ${
             activeTab === "media"
-              ? "border-[#0284c7] text-[#0284c7] dark:border-blue-500 dark:text-blue-400"
-              : "border-transparent text-[#667781] hover:text-[#111b21] dark:text-zinc-400 dark:hover:text-[#e9edef]"
+              ? "border-sky-500 text-sky-600 dark:text-sky-400 font-bold"
+              : "border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           }`}
         >
           Media ({mediaFiles.length})
         </button>
         <button
           onClick={() => setActiveTab("files")}
-          className={`px-3 py-3 text-center border-b-2 flex-shrink-0 cursor-pointer transition-colors ${
+          className={`px-3.5 py-2.5 text-center border-b-2 flex-shrink-0 cursor-pointer transition-colors ${
             activeTab === "files"
-              ? "border-[#0284c7] text-[#0284c7] dark:border-blue-500 dark:text-blue-400"
-              : "border-transparent text-[#667781] hover:text-[#111b21] dark:text-zinc-400 dark:hover:text-[#e9edef]"
+              ? "border-sky-500 text-sky-600 dark:text-sky-400 font-bold"
+              : "border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           }`}
         >
           Files ({documentFiles.length})
@@ -313,31 +316,30 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
       </div>
 
       {/* Tabs Content */}
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
-        
+      <div className="flex-1 overflow-y-auto p-3.5 scrollbar-thin">
         {/* Members Tab */}
         {activeTab === "members" && chat.type === "GROUP" && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Add member section */}
             {isGroupManager && (
               <div>
                 {!showAddMember ? (
                   <button
                     onClick={() => setShowAddMember(true)}
-                    className="flex items-center gap-2 text-base font-bold text-[#0284c7] dark:text-blue-400 hover:underline cursor-pointer"
+                    className="flex items-center gap-1.5 text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
                   >
                     <Plus size={14} className="stroke-[2.5px]" /> Add Member
                   </button>
                 ) : (
-                  <div className="space-y-2 border border-zinc-200/50 dark:border-white/5 p-2 rounded-xl bg-black/5 dark:bg-black/10">
+                  <div className="space-y-2 border border-zinc-200 dark:border-zinc-800 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/40">
                     <div className="flex items-center justify-between">
-                      <span className="text-base font-bold text-zinc-400 dark:text-zinc-500 uppercase">Search User</span>
+                      <span className="text-[11px] font-bold text-zinc-400 uppercase">Search User</span>
                       <button
                         onClick={() => {
                           setShowAddMember(false);
                           setMemberSearchQuery("");
                         }}
-                        className="text-base font-bold text-red-500 hover:underline cursor-pointer"
+                        className="text-xs font-bold text-red-500 hover:underline cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -349,30 +351,30 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
                         value={memberSearchQuery}
                         onChange={(e) => setMemberSearchQuery(e.target.value)}
                         placeholder="Search username"
-                        className="w-full pl-8 pr-2 py-1.5 rounded-lg border border-zinc-200 dark:border-white/5 bg-white dark:bg-[#182229] text-base focus:outline-none"
+                        className="w-full pl-8 pr-2 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs focus:outline-none focus:border-sky-500"
                       />
                     </div>
 
                     {/* Member Add Search Results */}
                     {searchingMembers ? (
-                      <div className="flex justify-center py-2"><Loader2 size={14} className="animate-spin text-blue-500" /></div>
+                      <div className="flex justify-center py-2"><Loader2 size={14} className="animate-spin text-sky-500" /></div>
                     ) : memberSearchQuery.trim().length >= 2 && memberSearchResults.length === 0 ? (
-                      <p className="text-base text-zinc-400 py-1 text-center">No users found</p>
+                      <p className="text-xs text-zinc-400 py-1 text-center">No users found</p>
                     ) : (
                       <div className="max-h-36 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
                         {memberSearchResults.map((u) => (
                           <div
                             key={u.id}
                             onClick={() => handleAddMember(u)}
-                            className="flex items-center justify-between p-1.5 hover:bg-white/10 dark:hover:bg-white/5 rounded-lg cursor-pointer transition-colors"
+                            className="flex items-center justify-between p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <Avatar src={u.avatarUrl} name={u.name} size="xs" />
-                              <span className="text-base font-semibold truncate text-zinc-800 dark:text-zinc-200">{u.name}</span>
+                              <span className="text-xs font-semibold truncate text-zinc-800 dark:text-zinc-200">{u.name}</span>
                             </div>
                             <button
                               disabled={actionInProgress === u.id}
-                              className="p-1 rounded bg-[#0284c7] text-white hover:bg-[#0369a1] disabled:opacity-55"
+                              className="p-1 rounded bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-55"
                             >
                               {actionInProgress === u.id ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
                             </button>
@@ -386,30 +388,30 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
             )}
 
             {/* Members List */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               {chat.members.map((member) => {
                 const isMe = member.userId === user?.id;
                 const canBeRemoved = canRemoveMember(member);
                 const memberRole = member.userId === chat.createdBy ? "OWNER" : "MEMBER";
-                const roleBadgeColor =
-                  memberRole === "OWNER"
-                    ? "bg-[#06A0F8]/10 text-[#06A0F8] border border-[#06A0F8]/20"
-                    : "bg-zinc-200/50 dark:bg-zinc-800/40 text-zinc-550 dark:text-zinc-400";
 
                 return (
-                  <div key={member.id} className="flex items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <div key={member.id} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Avatar src={member.user.avatarUrl} name={member.user.name} size="sm" />
                       <div className="min-w-0">
-                        <p className="text-base font-bold truncate text-zinc-900 dark:text-zinc-150">
+                        <p className="text-xs sm:text-sm font-semibold truncate text-zinc-900 dark:text-zinc-100">
                           {isMe ? "You" : member.user.name}
                         </p>
-                        <p className="text-base text-zinc-400 truncate">@{member.user.username}</p>
+                        <p className="text-[11px] text-zinc-400 truncate">@{member.user.username}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className={`text-base font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${roleBadgeColor}`}>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        memberRole === "OWNER"
+                          ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
+                      }`}>
                         {memberRole}
                       </span>
                       {canBeRemoved && (
@@ -433,14 +435,14 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
             </div>
 
             {/* Leave Group Action */}
-            <div className="pt-2 border-t border-zinc-200/50 dark:border-white/5">
+            <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={handleLeaveGroup}
-                className="w-full border-red-500/20 hover:border-red-500/40 text-red-500 hover:bg-red-500/10 flex items-center justify-center gap-1.5 font-bold"
+                className="w-full border-red-500/20 hover:border-red-500/40 text-red-500 hover:bg-red-500/10 flex items-center justify-center gap-1.5 font-semibold text-xs"
               >
-                <LogOut size={14} /> Leave Group
+                <LogOut size={13} /> Leave Group
               </Button>
             </div>
           </div>
@@ -449,37 +451,38 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
         {/* Media Tab */}
         {activeTab === "media" && (
           mediaFiles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-zinc-450 dark:text-zinc-500">
-              <Image size={28} className="mb-2 opacity-40" />
-              <span className="text-base font-medium">No media shared</span>
+            <div className="flex flex-col items-center justify-center h-36 text-zinc-400 dark:text-zinc-500">
+              <Image size={24} className="mb-1.5 opacity-40" />
+              <span className="text-xs font-medium">No media shared</span>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               {mediaFiles.map((att) => {
                 const isVid = att.mimeType?.startsWith("video/") || att.fileType === "VIDEO";
                 return (
-                <div
-                  key={att.id}
-                  onClick={() => handleDownload(att.fileUrl, att.fileName)}
-                  className="aspect-square rounded-lg overflow-hidden border border-[#e9edef] dark:border-white/5 bg-[#f0f2f5] dark:bg-zinc-950 relative group cursor-pointer hover:border-blue-500 transition-colors"
-                >
-                  {isVid ? (
-                    <video src={att.fileUrl} className="h-full w-full object-cover pointer-events-none" />
-                  ) : (
-                    <img src={att.fileUrl} alt="media" className="h-full w-full object-cover" />
-                  )}
-                  {isVid && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                      <span className="p-1.5 rounded-full bg-zinc-600/80 text-white shadow-sm flex items-center justify-center">
-                        <Play size={12} fill="currentColor" className="ml-0.5" />
-                      </span>
+                  <div
+                    key={att.id}
+                    onClick={() => handleDownload(att.fileUrl, att.fileName)}
+                    className="aspect-square rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950 relative group cursor-pointer hover:border-sky-500 transition-colors"
+                  >
+                    {isVid ? (
+                      <video src={att.fileUrl} className="h-full w-full object-cover pointer-events-none" />
+                    ) : (
+                      <img src={att.fileUrl} alt="media" className="h-full w-full object-cover" />
+                    )}
+                    {isVid && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <span className="p-1 rounded-full bg-black/60 text-white shadow-sm flex items-center justify-center">
+                          <Play size={10} fill="currentColor" className="ml-0.5" />
+                        </span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-10">
+                      <Download size={14} className="text-white" />
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-10">
-                    <Download size={14} className="text-white" />
                   </div>
-                </div>
-              )})}
+                );
+              })}
             </div>
           )
         )}
@@ -487,34 +490,33 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
         {/* Files Tab */}
         {activeTab === "files" && (
           documentFiles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-zinc-450 dark:text-zinc-500">
-              <FileText size={28} className="mb-2 opacity-40" />
-              <span className="text-base font-medium">No documents shared</span>
+            <div className="flex flex-col items-center justify-center h-36 text-zinc-400 dark:text-zinc-500">
+              <FileText size={24} className="mb-1.5 opacity-40" />
+              <span className="text-xs font-medium">No documents shared</span>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {documentFiles.map((att) => (
                 <div
                   key={att.id}
                   onClick={() => handleDownload(att.fileUrl, att.fileName)}
-                  className="flex items-center gap-3 p-2.5 rounded-lg border border-[#e9edef] dark:border-[#222e35]/35 bg-zinc-50 dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className="flex items-center gap-2.5 p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
-                  <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-[#0284c7] dark:text-blue-400">
-                    <FileText size={16} />
+                  <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-zinc-200 dark:bg-zinc-700 text-sky-600 dark:text-sky-400 flex-shrink-0">
+                    <FileText size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-semibold truncate text-[#111b21] dark:text-[#e9edef]">{att.fileName}</p>
-                    <p className="text-base text-[#667781] dark:text-[#8696a0]">
+                    <p className="text-xs font-semibold truncate text-zinc-900 dark:text-zinc-100">{att.fileName}</p>
+                    <p className="text-[11px] text-zinc-400">
                       {(att.fileSize / 1024).toFixed(1)} KB
                     </p>
                   </div>
-                  <Download size={14} className="text-[#54656f] hover:text-[#111b21] dark:text-zinc-500 dark:hover:text-[#e9edef]" />
+                  <Download size={13} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white flex-shrink-0" />
                 </div>
               ))}
             </div>
           )
         )}
-
       </div>
     </div>
   );

@@ -186,7 +186,7 @@ export function ChatHeader({
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3 cursor-pointer" onClick={onToggleProfile}>
+            <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer min-w-0" onClick={onToggleProfile}>
               <Avatar
                 src={partner.avatarUrl}
                 name={partner.name}
@@ -194,13 +194,13 @@ export function ChatHeader({
                 showStatus={chat.type === "DIRECT"}
                 isOnline={isOnline}
               />
-              <div>
-                <h4 className="text-base font-bold truncate max-w-[160px] sm:max-w-xs text-zinc-900 dark:text-zinc-100">
+              <div className="min-w-0">
+                <h4 className="text-sm sm:text-[15px] font-semibold truncate max-w-[130px] sm:max-w-xs text-zinc-900 dark:text-zinc-100">
                   {partner.name}
                 </h4>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center gap-1 mt-0.5">
                   {typingStatuses.length > 0 ? (
-                    <span className="flex items-center gap-1.5 text-base font-semibold text-brand-primary">
+                    <span className="flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400">
                       <span className="flex gap-0.5 items-center">
                         <span className="typing-dot" />
                         <span className="typing-dot" />
@@ -209,12 +209,12 @@ export function ChatHeader({
                       typing...
                     </span>
                   ) : isOnline ? (
-                    <span className="flex items-center gap-1.5 text-base font-bold text-zinc-600">
-                      <span className="h-1.5 w-1.5 rounded-full bg-zinc-600 animate-pulse inline-block" />
+                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
                       Online
                     </span>
                   ) : (
-                    <span className="text-base font-medium text-zinc-400 dark:text-zinc-500 first-letter:capitalize">
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 first-letter:capitalize truncate max-w-[140px] sm:max-w-none">
                       {chat.type === "DIRECT" 
                         ? formatLastSeen(onlineStatuses[partner.id]) 
                         : `${chat.members.length} members`}

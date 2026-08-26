@@ -58,10 +58,11 @@ interface CallStoreState {
   resetCallStore: () => void;
   ringVolume: number;
   setRingVolume: (volume: number) => void;
+  isMinimized: boolean;
+  setIsMinimized: (isMinimized: boolean) => void;
 }
 
-// ─── Ringtone ────────────────────────────────────────────────────────────────
-
+// Ringtone
 let audioCtx: AudioContext | null = null;
 let ringGain: GainNode | null = null;
 let ringInterval: any = null;
@@ -153,7 +154,7 @@ const STUN_SERVERS: RTCConfiguration = {
   rtcpMuxPolicy: "require",
 };
 
-// ─── Media helper with graceful device fallback ────────────────────────────────
+// Media helper with graceful device fallback 
 // Returns a MediaStream. If the camera is missing, falls back to audio-only.
 // If the mic is missing, throws a user-friendly error.
 async function getMediaStream(type: "audio" | "video"): Promise<{ stream: MediaStream; actualType: "audio" | "video" }> {
@@ -238,8 +239,7 @@ async function getMediaStream(type: "audio" | "video"): Promise<{ stream: MediaS
   }
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
-
+// Store
 export const useCallStore = create<CallStoreState>((set, get) => {
   // Module-level ephemeral state (not in Zustand to avoid serialization)
   let pendingCandidates: RTCIceCandidateInit[] = [];
@@ -319,6 +319,8 @@ export const useCallStore = create<CallStoreState>((set, get) => {
     isCameraOff: false,
     isScreenSharing: false,
     ringVolume: getInitialRingVolume(),
+    isMinimized: false,
+    setIsMinimized: (isMinimized) => set({ isMinimized }),
 
     setRingVolume: (volume) => {
       const clamped = Math.max(0, Math.min(1, Math.round(volume * 100) / 100));
@@ -338,7 +340,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
       }
     },
 
-    // ── 1-to-1: Caller ──────────────────────────────────────────────────────
+    // 1-to-1: Calle
 
     initiateCall: async (targetUserId, targetName, targetAvatar, type) => {
       cleanMedia();
@@ -399,7 +401,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
       }
     },
 
-    // ── 1-to-1: Receiver ────────────────────────────────────────────────────
+    //  1-to-1: Receiver 
 
     receiveCall: (payload) => {
       cleanMedia();
@@ -493,7 +495,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
       get().resetCallStore();
     },
 
-    // ── 1-to-1: Caller receives answer ───────────────────────────────────────
+    //  1-to-1: Caller receives answer 
 
     handleAnswer: (sdp) => {
       const { peerConnection } = get();
@@ -508,7 +510,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
         .catch((err) => console.error("setRemoteDescription (answer) failed:", err));
     },
 
-    // ── Group Call: Initiator ─────────────────────────────────────────────────
+    // Group Call: Initiator
 
     initiateGroupCall: async (chatId, chatTitle, type) => {
       cleanMedia();
@@ -545,7 +547,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
       }
     },
 
-    // ── Group Call: Receiver ───────────────────────────────────────────────────
+    //  Group Call: Receiver 
 
     receiveGroupCall: (payload) => {
       if (get().callState !== "idle") return; // already in a call
@@ -591,7 +593,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
       useSocketStore.getState().socket?.emit("call:group-response", { chatId: groupChatId, status });
     },
 
-    // ── Group Call: Peer connection management ────────────────────────────────
+    // Group Call: Peer connection management 
 
     handleParticipantJoined: async (userId) => {
       const { callState, isGroupCall, callType } = get();
@@ -685,7 +687,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
       }
     },
 
-    // ── Media controls ────────────────────────────────────────────────────────
+    // Media controls 
 
     toggleMute: () => {
       const { localStream, isMuted } = get();
@@ -752,7 +754,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
       }
     },
 
-    // ── Reset ─────────────────────────────────────────────────────────────────
+    //  Reset
 
     resetCallStore: () => {
       cleanMedia();
@@ -762,6 +764,7 @@ export const useCallStore = create<CallStoreState>((set, get) => {
         groupChatId: null, groupChatTitle: null,
         peerConnections: {}, remoteStreams: {}, participants: {},
         isMuted: false, isCameraOff: false, isScreenSharing: false,
+        isMinimized: false,
       });
     },
   };

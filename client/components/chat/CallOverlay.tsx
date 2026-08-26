@@ -17,6 +17,7 @@ import {
   MonitorOff,
   Maximize2,
   Minimize2,
+  ChevronDown,
   ArrowLeftRight,
 } from "lucide-react";
 import { Avatar } from "@components/ui/Avatar";
@@ -87,6 +88,8 @@ export function CallOverlay() {
     isScreenSharing,
     ringVolume,
     setRingVolume,
+    isMinimized,
+    setIsMinimized,
   } = useCallStore();
 
   const remoteAudioRef = useRef<HTMLVideoElement>(null);
@@ -120,15 +123,15 @@ export function CallOverlay() {
 
   // Auto-focus window on call state change to guarantee browser keydown capture
   useEffect(() => {
-    if (callState === "incoming" || callState === "outgoing") {
+    if ((callState === "incoming" || callState === "outgoing") && !isMinimized) {
       window.focus();
     }
-  }, [callState]);
+  }, [callState, isMinimized]);
 
   // Adjust volume for remote audio stream during connected calls
   useEffect(() => {
     if (remoteAudioRef.current) {
-      remoteAudioRef.current.volume = ringVolume;
+      remoteAudioRef.current.volume = Math.max(0, Math.min(1, ringVolume));
     }
   }, [ringVolume]);
 
@@ -216,15 +219,152 @@ export function CallOverlay() {
   const isMainMirrored = isSwapped && !isScreenSharing;
   const isPipMirrored = !isSwapped && !isScreenSharing;
 
+  // ─── MINIMIZED FLOATING MINI CALL WIDGET ──────────────────────────────────────
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-center bg-zinc-900/95 border border-white/20 shadow-2xl rounded-2xl p-2.5 backdrop-blur-xl animate-in fade-in zoom-in-95 select-none touch-none">
+        {/* Hidden Audio Elements for Audio Calls to keep playback alive */}
+        {callType === "audio" && (
+          <div className="absolute w-0 h-0 opacity-0 pointer-events-none">
+            {isGroupCall ? (
+              activeRemoteStreams.map(([userId, stream]) => (
+                <VideoStream key={userId} stream={stream} />
+              ))
+            ) : (
+              <video ref={remoteAudioRef} autoPlay playsInline />
+            )}
+          </div>
+        )}
+
+        {/* Video Call Mini Preview */}
+        {callType === "video" && (
+          <div
+            onClick={() => setIsMinimized(false)}
+            className="relative w-44 h-28 sm:w-52 sm:h-32 bg-black rounded-xl overflow-hidden mb-2 cursor-pointer group shadow-inner border border-white/10"
+            title="Click to maximize call"
+          >
+            {mainStream ? (
+              <VideoStream stream={mainStream} objectFit="cover" isMirrored={isMainMirrored} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-zinc-950 text-zinc-500 text-xs">
+                No Video
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-medium text-xs">
+              <Maximize2 size={16} />
+              <span>Expand</span>
+            </div>
+            {callState === "connected" && (
+              <div className="absolute bottom-1.5 left-1.5 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-400">
+                {formatTime(callDuration)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Voice Call Mini Bar */}
+        {callType === "audio" && (
+          <div
+            onClick={() => setIsMinimized(false)}
+            className="flex items-center gap-2.5 px-2 py-1 cursor-pointer group mb-1.5"
+            title="Click to maximize call"
+          >
+            <div className="relative flex items-center justify-center">
+              <Avatar src={displayAvatar} name={displayName || "?"} size="sm" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-zinc-900 animate-pulse" />
+            </div>
+            <div className="flex flex-col text-left pr-2">
+              <span className="text-xs font-semibold text-white truncate max-w-[110px]">
+                {displayName}
+              </span>
+              <span className="text-[11px] font-mono text-emerald-400">
+                {callState === "connected" ? formatTime(callDuration) : "Calling..."}
+              </span>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMinimized(false);
+              }}
+              className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+              title="Maximize"
+            >
+              <Maximize2 size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Mini Controls Row */}
+        <div className="flex items-center gap-1.5 pt-1 border-t border-white/10 w-full justify-around">
+          {/* Maximize Button */}
+          <button
+            onClick={() => setIsMinimized(false)}
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-zinc-200 hover:text-white transition-all"
+            title="Maximize Call Screen"
+          >
+            <Maximize2 size={14} />
+          </button>
+
+          {/* Mute Mic */}
+          <button
+            onClick={toggleMute}
+            className={`p-1.5 rounded-full transition-all active:scale-95 ${
+              isMuted
+                ? "bg-red-500 text-white"
+                : "bg-white/10 hover:bg-white/20 text-zinc-200 hover:text-white"
+            }`}
+            title={isMuted ? "Unmute Mic" : "Mute Mic"}
+          >
+            {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
+          </button>
+
+          {/* Camera Toggle for Video */}
+          {callType === "video" && (
+            <button
+              onClick={toggleCamera}
+              className={`p-1.5 rounded-full transition-all active:scale-95 ${
+                isCameraOff
+                  ? "bg-red-500 text-white"
+                  : "bg-white/10 hover:bg-white/20 text-zinc-200 hover:text-white"
+              }`}
+              title={isCameraOff ? "Turn Camera On" : "Turn Camera Off"}
+            >
+              {isCameraOff ? <VideoOff size={14} /> : <Video size={14} />}
+            </button>
+          )}
+
+          {/* End Call */}
+          <button
+            onClick={callState === "outgoing" ? declineCall : endCall}
+            className="p-1.5 rounded-full bg-red-600 hover:bg-red-700 active:scale-95 text-white transition-all"
+            title="End Call"
+          >
+            <PhoneOff size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // FULLSCREEN CALL OVERLAY 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-zinc-950 text-white select-none overflow-hidden touch-none">
       {/* Background Ambience / Blur */}
       <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[130px] pointer-events-none animate-pulse-slow z-0" />
       <div className="absolute bottom-1/4 right-1/4 h-[500px] w-[500px] rounded-full bg-sky-500/10 blur-[130px] pointer-events-none animate-pulse z-0" />
 
-      {/* Top Header Bar with WhatsApp styling & Volume Control */}
+      {/* Top Header Bar with Minimize & Controls */}
       <header className="relative z-30 w-full flex items-center justify-between px-4 sm:px-6 py-4 bg-gradient-to-b from-black/70 via-black/30 to-transparent">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Minimize Call Button */}
+          <button
+            onClick={() => setIsMinimized(true)}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-zinc-200 hover:text-white transition-all backdrop-blur-md border border-white/10 cursor-pointer flex items-center gap-1"
+            title="Minimize Call Screen (Use App During Call)"
+          >
+            <ChevronDown size={18} />
+          </button>
+
           <div className="flex flex-col text-left">
             <span className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />

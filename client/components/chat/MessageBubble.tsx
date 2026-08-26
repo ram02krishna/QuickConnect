@@ -90,9 +90,9 @@ export function MessageBubble({ message, searchQuery, isActiveSearchMatch = fals
       )}
     >
 
-      <div className={cn("flex flex-col max-w-[85%] sm:max-w-[75%]", isSelf ? "items-end" : "items-start")}>
+      <div className={cn("flex flex-col max-w-[88%] sm:max-w-[78%] md:max-w-[70%]", isSelf ? "items-end" : "items-start")}>
         {!isSelf && (
-          <span className="text-base font-bold text-zinc-700 dark:text-zinc-500 pl-2 mb-1">
+          <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 pl-2 mb-0.5">
             {message.sender.name}
           </span>
         )}
@@ -100,11 +100,11 @@ export function MessageBubble({ message, searchQuery, isActiveSearchMatch = fals
         <div
           className={cn(
             isMediaOnly
-              ? "p-1 rounded-lg relative border"
-              : "px-4 py-2.5 rounded-lg relative border text-base sm:text-base leading-normal font-sans font-normal tracking-wide break-words whitespace-pre-wrap shadow-sm",
+              ? "p-1 rounded-2xl relative border overflow-hidden"
+              : "px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl relative border text-[14.5px] sm:text-[15px] leading-relaxed font-sans break-words whitespace-pre-wrap shadow-xs",
             isSelf
-              ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white border-sky-500/60 rounded-tr-none shadow-sky-500/10"
-              : "bg-white/95 dark:bg-[#202c33] text-gray-900 dark:text-gray-100 border-white dark:border-white/5 rounded-tl-none",
+              ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white border-sky-500/60 rounded-tr-xs shadow-sky-500/10"
+              : "bg-white/95 dark:bg-[#202c33] text-zinc-900 dark:text-zinc-100 border-zinc-200/80 dark:border-white/5 rounded-tl-xs",
             isDeletedForEveryone && "bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-white/10 italic",
             message.isSending && "opacity-70",
             message.hasFailed && "border-red-500/30 bg-red-50 text-red-500 dark:bg-red-900/10"
@@ -260,10 +260,10 @@ export function MessageBubble({ message, searchQuery, isActiveSearchMatch = fals
                       <FileText size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-base font-bold truncate", isSelf ? "text-white" : "text-zinc-800 dark:text-zinc-200")}>
+                      <p className={cn("text-xs sm:text-sm font-semibold truncate", isSelf ? "text-white" : "text-zinc-800 dark:text-zinc-200")}>
                         {att.fileName}
                       </p>
-                      <p className={cn("text-base font-semibold", isSelf ? "text-blue-100/90" : "text-zinc-500 dark:text-zinc-450")}>
+                      <p className={cn("text-[11px] font-medium", isSelf ? "text-sky-100/90" : "text-zinc-500 dark:text-zinc-400")}>
                         {(att.fileSize / 1024).toFixed(1)} KB {isPdf && "• PDF"}
                       </p>
                     </div>

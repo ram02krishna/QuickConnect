@@ -426,13 +426,13 @@ export function MessageInput({ chatId, onSendMessage, replyingTo, onCancelReply 
             </button>
 
             {showEmojiPicker && (
-              <div className="absolute bottom-14 left-0 p-3 bg-white dark:bg-[#1f2c34] border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl z-20 grid grid-cols-6 gap-2 w-48">
+              <div className="absolute bottom-14 left-0 p-3 bg-white dark:bg-[#1f2c34] border border-zinc-200/80 dark:border-white/10 rounded-2xl shadow-2xl z-20 grid grid-cols-6 gap-2 w-56 max-w-[calc(100vw-32px)]">
                 {emojis.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => handleEmojiClick(emoji)}
-                    className="hover:scale-125 transition-transform text-lg cursor-pointer"
+                    className="hover:scale-125 transition-transform text-xl cursor-pointer p-1"
                   >
                     {emoji}
                   </button>
@@ -445,10 +445,10 @@ export function MessageInput({ chatId, onSendMessage, replyingTo, onCancelReply 
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="p-2.5 sm:p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 active:bg-zinc-300/50 dark:active:bg-zinc-600/40 text-[#54656f] dark:text-[#aebac1] transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none flex-shrink-0"
+            className="p-2 sm:p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 active:bg-zinc-300/50 dark:active:bg-zinc-600/40 text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none flex-shrink-0"
             title="Attach"
           >
-            {uploading ? <Loader2 size={19} className="animate-spin text-blue-500" /> : <Paperclip size={19} />}
+            {uploading ? <Loader2 size={19} className="animate-spin text-sky-500" /> : <Paperclip size={19} />}
           </button>
 
           <input
@@ -459,24 +459,24 @@ export function MessageInput({ chatId, onSendMessage, replyingTo, onCancelReply 
             disabled={uploading}
           />
 
-          <div className="flex-1">
-              <input
-                type="text"
-                value={text}
-                onChange={handleInputChange}
-                placeholder={uploading ? "Uploading file..." : "Type a message"}
-                disabled={uploading}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white/90 dark:bg-black/10 dark:border-white/5 shadow-sm text-zinc-900 dark:text-[#e9edef] placeholder-[#667781] dark:placeholder-[#8696a0] focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 transition-all text-base md:text-base disabled:opacity-50"
-              />
+          <div className="flex-1 min-w-0">
+            <input
+              type="text"
+              value={text}
+              onChange={handleInputChange}
+              placeholder={uploading ? "Uploading file..." : "Type a message..."}
+              disabled={uploading}
+              className="w-full px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white/90 dark:bg-black/20 shadow-xs text-sm sm:text-[15px] text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 transition-all disabled:opacity-50"
+            />
           </div>
 
           {text.trim() || uploading ? (
             <button
               type="submit"
               disabled={!text.trim() || uploading}
-              className="p-2.5 sm:p-2 rounded-full bg-transparent hover:bg-zinc-200/50 dark:hover:bg-[#2a3942] active:bg-zinc-300/50 dark:active:bg-zinc-600/40 text-[#54656f] dark:text-[#aebac1] transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center flex-shrink-0"
+              className="p-2 sm:p-2 rounded-full bg-sky-500 hover:bg-sky-600 active:scale-95 text-white transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center flex-shrink-0 shadow-xs"
             >
-              <Send size={19} className="text-blue-500 dark:text-blue-400" />
+              <Send size={17} />
             </button>
           ) : (
             <button
