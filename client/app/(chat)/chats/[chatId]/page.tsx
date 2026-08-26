@@ -140,8 +140,11 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
         !m.receipts?.some((r: any) => r.userId === user.id && r.readAt)
     );
 
-    for (const msg of unreadMessages) {
-      socket.emit("message:read", { messageId: msg.id, chatId });
+    if (unreadMessages.length > 0) {
+      socket.emit("message:read", {
+        messageIds: unreadMessages.map((m) => m.id),
+        chatId,
+      });
     }
   }, [chatId, messages, user?.id, socket, isConnected]);
 

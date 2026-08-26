@@ -23,14 +23,13 @@ export async function createGroup(req: Request, res: Response) {
   const creatorUser = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { name: true } });
   const creatorName = creatorUser?.name || "Someone";
 
-  const systemMsg = await sendMessage(
+  const { message: systemMsg, memberIds: uniqueMembers } = await sendMessage(
     chat.id,
     req.user!.id,
     `${creatorName} created group "${title}"`,
     "SYSTEM"
   );
 
-  const uniqueMembers = [...new Set([req.user!.id, ...memberIds])];
   for (const memberId of uniqueMembers) {
     io.to(`user:${memberId}`).emit(SOCKET_EVENTS.MESSAGE_NEW, systemMsg);
   }
@@ -74,25 +73,21 @@ export async function addMember(req: Request, res: Response) {
   const { userId } = req.body;
   const member = await chatService.addMember(req.params.chatId as string, req.user!.id, userId);
 
-  const adderUser = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { name: true } });
-  const addedUser = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  // Parallel user queries
+  const [adderUser, addedUser] = await Promise.all([
+    prisma.user.findUnique({ where: { id: req.user!.id }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+  ]);
 
-  const systemMsg = await sendMessage(
+  const { message: systemMsg, memberIds } = await sendMessage(
     req.params.chatId as string,
     req.user!.id,
     `${adderUser?.name || "Admin"} added ${addedUser?.name || "a user"}`,
     "SYSTEM"
   );
 
-  const chat = await prisma.chat.findUnique({
-    where: { id: req.params.chatId as string },
-    select: { members: { select: { userId: true } } },
-  });
-
-  if (chat) {
-    for (const m of chat.members) {
-      io.to(`user:${m.userId}`).emit(SOCKET_EVENTS.MESSAGE_NEW, systemMsg);
-    }
+  for (const m of memberIds) {
+    io.to(`user:${m}`).emit(SOCKET_EVENTS.MESSAGE_NEW, systemMsg);
   }
 
   sendSuccess(res, "Member added", { member }, 201);
@@ -103,13 +98,16 @@ export async function removeMember(req: Request, res: Response) {
   const requesterId = req.user!.id;
   const targetUserId = req.params.userId as string;
 
-  const removerUser = await prisma.user.findUnique({ where: { id: requesterId }, select: { name: true } });
-  const removedUser = await prisma.user.findUnique({ where: { id: targetUserId }, select: { name: true } });
+  // Parallel user queries
+  const [removerUser, removedUser] = await Promise.all([
+    prisma.user.findUnique({ where: { id: requesterId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: targetUserId }, select: { name: true } }),
+  ]);
 
   await chatService.removeMember(chatId, requesterId, targetUserId);
 
   const isSelf = requesterId === targetUserId;
-  const systemMsg = await sendMessage(
+  const { message: systemMsg, memberIds } = await sendMessage(
     chatId,
     requesterId,
     isSelf
@@ -118,15 +116,8 @@ export async function removeMember(req: Request, res: Response) {
     "SYSTEM"
   );
 
-  const chat = await prisma.chat.findUnique({
-    where: { id: chatId },
-    select: { members: { select: { userId: true } } },
-  });
-
-  if (chat) {
-    for (const m of chat.members) {
-      io.to(`user:${m.userId}`).emit(SOCKET_EVENTS.MESSAGE_NEW, systemMsg);
-    }
+  for (const m of memberIds) {
+    io.to(`user:${m}`).emit(SOCKET_EVENTS.MESSAGE_NEW, systemMsg);
   }
 
   io.to(`user:${targetUserId}`).emit(SOCKET_EVENTS.MESSAGE_NEW, systemMsg);

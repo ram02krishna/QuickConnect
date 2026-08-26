@@ -170,41 +170,61 @@ export function setupChatSockets(io: Server, socket: Socket) {
   });
 
   // read receipts
-  socket.on(SOCKET_EVENTS.MESSAGE_DELIVERED, async ({ messageId, chatId }: { messageId: string; chatId: string }) => {
+  socket.on(SOCKET_EVENTS.MESSAGE_DELIVERED, async (payload: { messageId?: string; messageIds?: string[]; chatId: string }) => {
     try {
-      if (!messageId || !chatId) return;
+      const { chatId } = payload;
+      if (!chatId) return;
+      const ids = payload.messageIds || (payload.messageId ? [payload.messageId] : []);
+      if (ids.length === 0) return;
 
-      const receipt = await prisma.messageReceipt.upsert({
-        where: { messageId_userId: { messageId, userId } },
-        update: { deliveredAt: new Date() },
-        create: { messageId, userId, deliveredAt: new Date() },
-      });
+      const now = new Date();
+      await prisma.$transaction(
+        ids.map((messageId) =>
+          prisma.messageReceipt.upsert({
+            where: { messageId_userId: { messageId, userId } },
+            update: { deliveredAt: now },
+            create: { messageId, userId, deliveredAt: now },
+          })
+        )
+      );
 
-      socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.MESSAGE_DELIVERED, {
-        messageId,
-        chatId,
-        receipt: { userId, deliveredAt: receipt.deliveredAt, readAt: receipt.readAt },
-      });
+      for (const messageId of ids) {
+        socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.MESSAGE_DELIVERED, {
+          messageId,
+          chatId,
+          receipt: { userId, deliveredAt: now, readAt: null },
+        });
+      }
     } catch (err) {
       console.error("Error in message:delivered:", err);
     }
   });
 
-  socket.on(SOCKET_EVENTS.MESSAGE_READ, async ({ messageId, chatId }: { messageId: string; chatId: string }) => {
+  socket.on(SOCKET_EVENTS.MESSAGE_READ, async (payload: { messageId?: string; messageIds?: string[]; chatId: string }) => {
     try {
-      if (!messageId || !chatId) return;
+      const { chatId } = payload;
+      if (!chatId) return;
+      const ids = payload.messageIds || (payload.messageId ? [payload.messageId] : []);
+      if (ids.length === 0) return;
 
-      const receipt = await prisma.messageReceipt.upsert({
-        where: { messageId_userId: { messageId, userId } },
-        update: { readAt: new Date() },
-        create: { messageId, userId, deliveredAt: new Date(), readAt: new Date() },
-      });
+      const now = new Date();
+      await prisma.$transaction(
+        ids.map((messageId) =>
+          prisma.messageReceipt.upsert({
+            where: { messageId_userId: { messageId, userId } },
+            update: { readAt: now },
+            create: { messageId, userId, deliveredAt: now, readAt: now },
+          })
+        )
+      );
 
-      socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.MESSAGE_READ, {
-        messageId,
-        chatId,
-        receipt: { userId, deliveredAt: receipt.deliveredAt, readAt: receipt.readAt },
-      });
+      for (const messageId of ids) {
+        socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.MESSAGE_READ, {
+          messageId,
+          chatId,
+          receipt: { userId, deliveredAt: now, readAt: now },
+        });
+      }
     } catch (err) {
       console.error("Error in message:read:", err);
     }

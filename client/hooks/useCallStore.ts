@@ -66,6 +66,18 @@ let audioCtx: AudioContext | null = null;
 let ringGain: GainNode | null = null;
 let ringInterval: any = null;
 
+const getInitialRingVolume = (): number => {
+  if (typeof window === "undefined") return 0.5;
+  try {
+    const saved = localStorage.getItem("quickconnect_call_ring_volume");
+    if (saved !== null) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) return parsed;
+    }
+  } catch {}
+  return 0.5;
+};
+
 function startRingtone(type: "dial" | "ring") {
   if (typeof window === "undefined") return;
   try {
@@ -79,6 +91,7 @@ function startRingtone(type: "dial" | "ring") {
     ringGain = audioCtx.createGain();
     const volume = useCallStore.getState().ringVolume;
     ringGain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    ringGain.gain.value = volume;
     ringGain.connect(audioCtx.destination);
 
     const playBeep = () => {
@@ -298,12 +311,22 @@ export const useCallStore = create<CallStoreState>((set, get) => {
     isMuted: false,
     isCameraOff: false,
     isScreenSharing: false,
-    ringVolume: 0.3,
+    ringVolume: getInitialRingVolume(),
 
     setRingVolume: (volume) => {
-      set({ ringVolume: volume });
+      const clamped = Math.max(0, Math.min(1, volume));
+      set({ ringVolume: clamped });
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("quickconnect_call_ring_volume", clamped.toString());
+        }
+      } catch {}
       if (ringGain && audioCtx) {
-        try { ringGain.gain.setValueAtTime(volume, audioCtx.currentTime); } catch {}
+        try {
+          ringGain.gain.cancelScheduledValues(audioCtx.currentTime);
+          ringGain.gain.setValueAtTime(clamped, audioCtx.currentTime);
+          ringGain.gain.value = clamped;
+        } catch {}
       }
     },
 
