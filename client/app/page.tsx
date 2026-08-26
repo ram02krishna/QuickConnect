@@ -165,13 +165,6 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 pt-16 sm:pt-24 pb-16 max-w-6xl mx-auto w-full relative z-10">
-        
-        {/* Release Pill */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 dark:bg-sky-500/15 border border-sky-500/20 text-sky-600 dark:text-sky-400 text-xs font-semibold mb-6 shadow-xs backdrop-blur-md">
-          <Sparkles size={14} className="animate-spin-slow" />
-          <span>QuickConnect 2.0 • Ultra-fast WebSockets & HD WebRTC Mesh</span>
-        </div>
-
         {/* Hero Title */}
         <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight max-w-4xl mb-6 text-transparent bg-clip-text bg-gradient-to-b from-zinc-900 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-100 dark:to-zinc-400 leading-[1.1]">
           Connect Beyond <br className="hidden sm:block" /> Boundaries
