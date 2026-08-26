@@ -3,11 +3,10 @@ import * as messageService from "../services/message.service.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { io } from "../server.js";
 import { SOCKET_EVENTS } from "../sockets/events.js";
-import { prisma } from "../config/prisma.js";
 
 export async function sendNewMessage(req: Request, res: Response) {
   const { content, type, attachments } = req.body;
-  const message = await messageService.sendMessage(
+  const { message, memberIds } = await messageService.sendMessage(
     req.params.chatId as string,
     req.user!.id,
     content,
@@ -15,15 +14,9 @@ export async function sendNewMessage(req: Request, res: Response) {
     attachments
   );
 
-  const chat = await prisma.chat.findUnique({
-    where: { id: req.params.chatId as string },
-    select: { members: { select: { userId: true } } },
-  });
-
-  if (chat) {
-    for (const member of chat.members) {
-      io.to(`user:${member.userId}`).emit(SOCKET_EVENTS.MESSAGE_NEW, message);
-    }
+  // Emit to all members using memberIds returned by the service—no extra DB query needed.
+  for (const memberId of memberIds) {
+    io.to(`user:${memberId}`).emit(SOCKET_EVENTS.MESSAGE_NEW, message);
   }
 
   sendSuccess(res, "Message sent", { message }, 201);

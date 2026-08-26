@@ -218,29 +218,27 @@ export const useChatStore = create<ChatState>()(
             updatedThread = [...thread, message];
           }
 
-          // update last message on the corresponding chat
-          const updatedChats = state.chats.map((c) => {
-            if (c.id === chatId) {
-              return {
-                ...c,
-                lastMessageId: message.id,
-                updatedAt: message.createdAt,
-                lastMessage: {
-                  id: message.id,
-                  type: message.type,
-                  content: message.content,
-                  createdAt: message.createdAt,
-                  sender: { id: message.senderId, name: message.sender.name },
-                },
-              };
-            }
-            return c;
-          });
-
-          // sort so active chat stays at top
-          updatedChats.sort(
-            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          );
+          // Move the updated chat to the front in O(n) — avoids full sort on every message
+          const chatIndex = state.chats.findIndex((c) => c.id === chatId);
+          let updatedChats: Chat[];
+          if (chatIndex === -1) {
+            updatedChats = state.chats;
+          } else {
+            const updatedChat = {
+              ...state.chats[chatIndex],
+              lastMessageId: message.id,
+              updatedAt: message.createdAt,
+              lastMessage: {
+                id: message.id,
+                type: message.type,
+                content: message.content,
+                createdAt: message.createdAt,
+                sender: { id: message.senderId, name: message.sender.name },
+              },
+            };
+            // Splice updated chat to front without sorting the whole array
+            updatedChats = [updatedChat, ...state.chats.filter((c) => c.id !== chatId)];
+          }
 
           return {
             messages: { ...state.messages, [chatId]: updatedThread },
@@ -414,10 +412,11 @@ export const useChatStore = create<ChatState>()(
     {
       name: "chat-store",
       storage: createJSONStorage(() => localStorage),
+      // Only persist chat list metadata — messages are kept in memory only.
+      // Persisting messages caused a blocking JSON.stringify of ALL messages on every
+      // received message, which was the single biggest source of UI jank.
       partialize: (state) => ({
         chats: state.chats,
-        messages: state.messages,
-        hasMoreMessages: state.hasMoreMessages,
       }),
     }
   )

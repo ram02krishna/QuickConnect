@@ -19,8 +19,13 @@ export const io = new Server(httpServer, {
     maxDisconnectionDuration: 2 * 60 * 1000,
     skipMiddlewares: true,
   },
-  pingTimeout: 60000,
-  pingInterval: 25000,
+  // Tighter keepalive: detect dropped connections in ~10s instead of 25–60s
+  pingTimeout: 20000,
+  pingInterval: 10000,
+  // Compress socket frames to reduce payload size on large messages/media metadata
+  perMessageDeflate: {
+    threshold: 1024, // only compress frames > 1KB
+  },
 });
 
 initializeSockets(io);

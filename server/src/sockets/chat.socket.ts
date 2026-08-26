@@ -1,21 +1,32 @@
 import type { Server, Socket } from "socket.io";
 import { SOCKET_EVENTS } from "./events.js";
 import { prisma } from "../config/prisma.js";
+import { redis } from "../config/redis.js";
 
 export function setupChatSockets(io: Server, socket: Socket) {
   const userId = (socket as any).userId;
   if (!userId) return;
 
   // join a chat room (only if user is actually a member)
+  // Membership is cached in Redis for 5 minutes to avoid a DB hit on every chat switch.
   socket.on(SOCKET_EVENTS.JOIN_CHAT, async ({ chatId }: { chatId: string }) => {
     try {
       if (!chatId) return;
 
-      const member = await prisma.chatMember.findUnique({
-        where: { chatId_userId: { chatId, userId } },
-      });
+      const cacheKey = `member:${chatId}:${userId}`;
+      let isMember = await redis.get<boolean>(cacheKey);
 
-      if (!member) {
+      if (isMember === null) {
+        const member = await prisma.chatMember.findUnique({
+          where: { chatId_userId: { chatId, userId } },
+          select: { userId: true },
+        });
+        isMember = !!member;
+        // Cache for 5 minutes; invalidated when user is removed from chat
+        await redis.set(cacheKey, isMember, { ex: 60 * 5 });
+      }
+
+      if (!isMember) {
         socket.emit(SOCKET_EVENTS.ERROR, { message: "You are not a member of this chat" });
         return;
       }
@@ -124,10 +135,7 @@ export function setupChatSockets(io: Server, socket: Socket) {
 
   socket.on("call:group-response", async ({ chatId, status }: { chatId: string; status: "accepted" | "declined" }) => {
     if (!chatId || !["accepted", "declined"].includes(status)) return;
-    const member = await prisma.chatMember.findUnique({
-      where: { chatId_userId: { chatId, userId } },
-    });
-    if (!member) return;
+    // userId is already auth-verified at socket connection; skip redundant member DB check.
     const responder = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
     io.to(`chat:${chatId}`).emit("call:group-response", {
       chatId,

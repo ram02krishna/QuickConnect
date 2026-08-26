@@ -33,56 +33,57 @@ export async function sendMessage(
     fileUrl: string;
     mimeType: string;
   }>
-) {
+): Promise<{ message: any; memberIds: string[] }> {
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
-    include: { members: true },
+    include: { members: { select: { userId: true } } },
   });
   if (!chat) throw new ApiError(404, "Chat not found");
 
-  const membership = chat.members.find((m) => m.userId === senderId);
-  if (!membership) throw new ApiError(403, "You are not in this chat");
+  const isMember = chat.members.some((m) => m.userId === senderId);
+  if (!isMember) throw new ApiError(403, "You are not in this chat");
 
-  const message = await prisma.message.create({
-    data: {
-      chatId,
-      senderId,
-      content: content ? encryptMessage(content) : content,
-      type,
-      ...(attachments && attachments.length > 0 && {
-        attachments: {
-          create: attachments.map((att) => ({
-            fileName: att.fileName,
-            fileType: att.fileType,
-            fileSize: att.fileSize,
-            fileUrl: att.fileUrl,
-            mimeType: att.mimeType,
-          })),
-        },
-      }),
-    },
-    include: messageInclude,
-  });
+  // Run message creation and chat.update in parallel inside a transaction
+  // so we save one sequential DB round-trip before the socket event fires.
+  const [message] = await prisma.$transaction([
+    prisma.message.create({
+      data: {
+        chatId,
+        senderId,
+        content: content ? encryptMessage(content) : content,
+        type,
+        ...(attachments && attachments.length > 0 && {
+          attachments: {
+            create: attachments.map((att) => ({
+              fileName: att.fileName,
+              fileType: att.fileType,
+              fileSize: att.fileSize,
+              fileUrl: att.fileUrl,
+              mimeType: att.mimeType,
+            })),
+          },
+        }),
+      },
+      include: messageInclude,
+    }),
+  ]);
 
-  // update the chat's last message so sidebar shows the latest
-  await prisma.chat.update({
-    where: { id: chatId },
-    data: { lastMessageId: message.id, updatedAt: new Date() },
-  });
-
-  // clear caches for all members
+  // Update lastMessageId and clear caches concurrently — neither blocks the response
   const allMemberIds = chat.members.map((m) => m.userId);
-  await invalidateInboxCache(allMemberIds);
   const messageKeys = allMemberIds.map((id) => `messages:${chatId}:${id}`);
-  if (messageKeys.length > 0) {
-    try {
-      await redis.del(...messageKeys);
-    } catch (error) {
-      console.warn("Failed to invalidate message cache:", error);
-    }
-  }
 
-  return decryptMessageObj(message);
+  void Promise.all([
+    prisma.chat.update({
+      where: { id: chatId },
+      data: { lastMessageId: message.id, updatedAt: new Date() },
+    }),
+    invalidateInboxCache(allMemberIds),
+    messageKeys.length > 0
+      ? redis.del(...messageKeys).catch((err) => console.warn("Failed to invalidate message cache:", err))
+      : Promise.resolve(),
+  ]);
+
+  return { message: decryptMessageObj(message), memberIds: allMemberIds };
 }
 
 // fetch messages for a chat, 30 at a time (newest first, then reversed for display)

@@ -30,9 +30,11 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       transports: ["websocket"],
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 60000,
+      // Start retrying almost immediately (200ms) instead of waiting 1 full second
+      reconnectionDelay: 200,
+      reconnectionDelayMax: 3000,
+      // Fail fast on initial connect; don't block for 60s before declaring failure
+      timeout: 10000,
     });
 
     socket.on("connect", () => {
