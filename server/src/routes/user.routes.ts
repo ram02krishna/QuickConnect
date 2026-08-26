@@ -9,7 +9,7 @@ const router = Router();
 // Zod schema for profile updates
 const updateMeSchema = z.object({
   name: z.string().min(1, "Name cannot be empty").optional(),
-  bio: z.string().max(160, "Bio must be 160 characters or less").nullable().optional(),
+  bio: z.string().max(40, "Bio must be 40 characters or less").nullable().optional(),
   avatarUrl: z.string().url("Invalid avatar URL").optional().or(z.literal("")),
   username: z.string()
     .min(3, "Username must be at least 3 characters")
