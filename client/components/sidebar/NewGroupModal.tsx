@@ -134,10 +134,9 @@ export function NewGroupModal({ onClose, onGroupCreated }: NewGroupModalProps) {
       }
 
       const memberIds = selectedUsers.map((u) => u.id);
-      const res = await api.post("/chats", {
-        type: "GROUP",
+      const res = await api.post("/chats/group", {
         title: title.trim(),
-        photoUrl,
+        photoUrl: photoUrl || undefined,
         memberIds,
       });
 

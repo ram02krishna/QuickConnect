@@ -32,6 +32,13 @@ router.use(authenticate);
 router.get("/", chatController.getAllMyChats);
 router.post("/direct", validate(openDirectChatSchema), chatController.startNewChat);
 router.post("/group", validate(createGroupSchema), chatController.createGroup);
+router.post("/groups", validate(createGroupSchema), chatController.createGroup);
+router.post("/", (req, res, next) => {
+  if (req.body.type === "GROUP" || Array.isArray(req.body.memberIds)) {
+    return chatController.createGroup(req, res);
+  }
+  return chatController.startNewChat(req, res);
+});
 
 router.get("/:chatId", chatController.getChat);
 router.patch("/:chatId", validate(updateGroupSchema), chatController.updateChat);
