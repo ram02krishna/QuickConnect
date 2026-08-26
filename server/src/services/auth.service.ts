@@ -209,3 +209,23 @@ export async function resetPassword(userId: string, otp: string, newPassword: st
   await redis.del(`pwd_reset:${email}`);
   return { success: true };
 }
+
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new ApiError(404, "User not found");
+
+  const passwordOk = await argon2.verify(user.passwordHash, currentPassword);
+  if (!passwordOk) throw new ApiError(400, "Current password is incorrect");
+
+  if (currentPassword === newPassword) {
+    throw new ApiError(400, "New password must be different from current password");
+  }
+
+  const passwordHash = await argon2.hash(newPassword);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+
+  return { success: true };
+}

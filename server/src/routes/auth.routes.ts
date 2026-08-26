@@ -45,9 +45,15 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters").max(100),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "New password must be at least 8 characters").max(100),
+});
+
 router.post("/register", validate(registerSchema), authController.register);
 router.post("/login", validate(loginSchema), authController.login);
 router.post("/logout", authenticate, authController.logout);
+router.post("/change-password", authenticate, validate(changePasswordSchema), authController.changePassword);
 router.post("/verify-email", validate(verifySchema), authController.verifyEmail);
 router.post("/resend-verification", validate(resendSchema), authController.resendVerification);
 router.post("/forgot-password", validate(forgotPasswordSchema), authController.forgotPassword);
