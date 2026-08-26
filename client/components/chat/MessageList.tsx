@@ -138,18 +138,19 @@ export function MessageList({
           startReached={onLoadMore}
           components={{
             Header: () => loadingMore ? (
-              <div className="flex justify-center py-4 select-none">
-                <span className="flex items-center gap-2 text-base font-semibold text-zinc-700 dark:text-zinc-500 bg-white/70 dark:bg-[#1f2c34]/70 px-3 py-1.5 rounded-full shadow border border-[#e9edef]/20 dark:border-white/5">
+              <div className="flex justify-center py-3 select-none">
+                <span className="flex items-center gap-2 text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-white/80 dark:bg-zinc-800/80 px-3 py-1.5 rounded-full shadow-xs border border-zinc-200 dark:border-white/5">
                   Loading previous messages...
                 </span>
               </div>
-            ) : <div style={{ height: "20px" }} />
+            ) : <div style={{ height: "16px" }} />,
+            Footer: () => <div style={{ height: "36px" }} className="w-full pointer-events-none" />
           }}
           itemContent={(index, item) => {
             if (item.type === "date") {
               return (
-                <div className="flex justify-center my-4 select-none w-full">
-                  <span className="text-base font-medium text-[#54656f] dark:text-[#8696a0] px-3.5 py-1.5 bg-white dark:bg-[#1f2c34] rounded-lg shadow-sm border border-zinc-200 dark:border-transparent">
+                <div className="flex justify-center my-3 select-none w-full">
+                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 px-3 py-1 bg-white/90 dark:bg-zinc-800/90 rounded-full shadow-xs border border-zinc-200/80 dark:border-white/5 backdrop-blur-sm">
                     {formatDateHeader(item.value)}
                   </span>
                 </div>
@@ -157,7 +158,7 @@ export function MessageList({
             }
 
             return (
-              <div className="px-4 py-1.5 w-full">
+              <div className="px-3 sm:px-4 py-1.5 w-full">
                 <MessageBubble
                   message={item.value}
                   searchQuery={searchQuery}

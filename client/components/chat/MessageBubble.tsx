@@ -85,8 +85,8 @@ export function MessageBubble({ message, searchQuery, isActiveSearchMatch = fals
   return (
     <div
       className={cn(
-        "flex gap-3 w-full max-w-2xl px-4 py-1.5 transition-all relative group justify-start",
-        isSelf ? "ml-auto flex-row-reverse pb-3" : "mr-auto flex-row"
+        "flex gap-2.5 sm:gap-3 w-full max-w-2xl px-2 sm:px-4 py-1 transition-all relative group justify-start",
+        isSelf ? "ml-auto flex-row-reverse pb-3" : "mr-auto flex-row pb-2"
       )}
     >
 
@@ -322,15 +322,15 @@ export function MessageBubble({ message, searchQuery, isActiveSearchMatch = fals
 
           <div
             className={cn(
-              "flex items-center justify-end gap-1 mt-1 text-base font-medium select-none",
+              "flex items-center justify-end gap-1 mt-1 text-xs select-none",
               isMediaOnly
-                ? "absolute bottom-3 right-3 bg-black/50 backdrop-blur-md px-2.5 py-0.5 rounded-full text-white border border-white/5 z-20"
+                ? "absolute bottom-2.5 right-2.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full text-white border border-white/10 z-20"
                 : isSelf
-                ? "text-white/70"
-                : "text-zinc-550 dark:text-zinc-400"
+                ? "text-white/80"
+                : "text-zinc-500 dark:text-zinc-400"
             )}
           >
-            <span className="text-[11px]">
+            <span className="text-[10.5px] tabular-nums font-medium">
               {new Date(message.createdAt).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",

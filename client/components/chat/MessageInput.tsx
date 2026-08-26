@@ -352,7 +352,7 @@ export function MessageInput({ chatId, onSendMessage, replyingTo, onCancelReply 
   }
 
   return (
-    <div className="relative">
+    <div className="relative flex-shrink-0 z-20">
       <div className="surface-glass p-3 border-t border-slate-200/70 dark:border-white/5 relative z-20 text-zinc-900 dark:text-zinc-100 select-none">
 
       {replyingTo && (
