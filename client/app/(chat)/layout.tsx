@@ -44,10 +44,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (isHydrated && mounted) {
       if (!token) {
-        router.push("/login");
+        const returnUrl = pathname && pathname !== "/" ? `?redirect=${encodeURIComponent(pathname)}` : "";
+        router.replace(`/login${returnUrl}`);
       }
     }
-  }, [isHydrated, mounted, token, router]);
+  }, [isHydrated, mounted, token, router, pathname]);
 
   // Connect socket and fetch chats list on mount
   useEffect(() => {
@@ -69,16 +70,29 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         const statuses = chatsRes.data.data.onlineStatuses || {};
         setOnlineStatuses(statuses);
         
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to load chats:", err);
+        if (err.response?.status === 401) {
+          useAuthStore.getState().logout();
+          router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+        }
       }
     };
 
     void fetchData();
-  }, [token, connectSocket, setChats, setOnlineStatuses]);
+  }, [token, connectSocket, setChats, setOnlineStatuses, router, pathname]);
 
-  if (!mounted || !token) {
-    return null;
+  if (!mounted || !isHydrated || !token) {
+    return (
+      <div className="flex h-[100dvh] w-full items-center justify-center bg-white dark:bg-zinc-950">
+        <div className="flex flex-col items-center gap-3 animate-pulse">
+          <img src="/logo.png" alt="QuickConnect" className="h-12 w-12 object-contain" />
+          <div className="h-1.5 w-24 rounded-full bg-sky-500/30 overflow-hidden">
+            <div className="h-full w-full bg-sky-500 animate-indeterminate" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const isRootChats = pathname === "/chats";

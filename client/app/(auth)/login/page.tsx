@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AuthCard } from "@components/auth/AuthCard";
 import { Input } from "@components/ui/Input";
@@ -12,8 +12,11 @@ import { useAuthStore } from "@hooks/useAuthStore";
 import { useSocketStore } from "@hooks/useSocketStore";
 import { Eye, EyeOff } from "lucide-react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
+
   const setAuth = useAuthStore((state) => state.setAuth);
   const connectSocket = useSocketStore((state) => state.connectSocket);
 
@@ -43,7 +46,12 @@ export default function LoginPage() {
       const { user, token } = res.data.data;
       setAuth(user, token);
       connectSocket(token);
-      router.push("/chats");
+
+      const targetDestination = redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+        ? redirectParam
+        : "/chats";
+
+      router.push(targetDestination);
     } catch (err: any) {
       console.warn("Login failed:", err.message || err);
       const msg = err.response?.data?.message || "Invalid credentials — please try again.";
@@ -134,6 +142,14 @@ export default function LoginPage() {
         </div>
       </form>
     </AuthCard>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
 

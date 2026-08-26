@@ -31,6 +31,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       console.warn("Session expired or unauthorized, logging out...");
       useAuthStore.getState().logout();
+      if (typeof window !== "undefined") {
+        const currentPath = window.location.pathname;
+        if (!currentPath.startsWith("/login") && !currentPath.startsWith("/signup") && !currentPath.startsWith("/verify-email")) {
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+        }
+      }
     }
     return Promise.reject(error);
   }

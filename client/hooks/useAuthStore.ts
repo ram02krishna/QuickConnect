@@ -21,21 +21,44 @@ interface AuthState {
   logout: () => void;
 }
 
+function syncAuthCookie(token: string | null) {
+  if (typeof document === "undefined") return;
+  if (token) {
+    document.cookie = `quickconnect_token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+  } else {
+    document.cookie = "quickconnect_token=; path=/; max-age=0; SameSite=Lax";
+  }
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
       token: null,
-      setAuth: (user, token) => set({ user, token }),
-      setToken: (token) => set({ token }),
+      setAuth: (user, token) => {
+        syncAuthCookie(token);
+        set({ user, token });
+      },
+      setToken: (token) => {
+        syncAuthCookie(token);
+        set({ token });
+      },
       updateUser: (fields) =>
-          set((state) => ({
-            user: state.user ? { ...state.user, ...fields } : null,
-          })),
-      logout: () => set({ user: null, token: null }),
+        set((state) => ({
+          user: state.user ? { ...state.user, ...fields } : null,
+        })),
+      logout: () => {
+        syncAuthCookie(null);
+        set({ user: null, token: null });
+      },
     }),
     {
-      name: "quickconnect-auth", 
+      name: "quickconnect-auth",
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) {
+          syncAuthCookie(state.token);
+        }
+      },
     }
   )
 );

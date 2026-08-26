@@ -11,6 +11,7 @@ import { MessageList } from "@components/chat/MessageList";
 import { MessageInput } from "@components/chat/MessageInput";
 import { ProfilePanel } from "@components/profile/ProfilePanel";
 import api from "@lib/api";
+import { toast } from "sonner";
 
 const EMPTY_MESSAGES: any[] = [];
 
@@ -116,8 +117,15 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
         } else {
           useChatStore.getState().setHasMoreMessages(chatId, true);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to fetch messages:", err);
+        if (err.response?.status === 401) {
+          useAuthStore.getState().logout();
+          router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        } else if (err.response?.status === 403 || err.response?.status === 404) {
+          toast.error("You do not have access to this chat.");
+          router.replace("/chats");
+        }
       } finally {
         setLoading(false);
       }
@@ -126,7 +134,7 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
     if (isConnected) {
       void fetchMessages();
     }
-  }, [chatId, setMessages, isConnected]);
+  }, [chatId, setMessages, isConnected, router]);
 
   // 3. Mark messages as read when chat is opened or new messages load in
   useEffect(() => {
