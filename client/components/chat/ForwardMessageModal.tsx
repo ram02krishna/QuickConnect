@@ -22,9 +22,9 @@ export function ForwardMessageModal({ messageToForward, onClose, onForward }: Fo
   
   // Filter out the chat where the message originated
   const filteredChats = chats
-    .filter(c => c.id !== messageToForward.chatId)
+    .filter(c => c.id !== messageToForward?.chatId)
     .filter(c => c.title?.toLowerCase().includes(search.toLowerCase()) || 
-      c.members.some(m => m.user?.name.toLowerCase().includes(search.toLowerCase())));
+      c.members?.some((m: any) => m.user?.name?.toLowerCase().includes(search.toLowerCase())));
 
   const handleForwardClick = async (chatId: string) => {
     setIsSending(true);
@@ -38,14 +38,14 @@ export function ForwardMessageModal({ messageToForward, onClose, onForward }: Fo
   };
 
   const getChatName = (chat: any) => {
-    if (chat.type === "GROUP") return chat.title;
-    const partner = chat.members.find((m: any) => m.userId !== user?.id);
-    return partner?.user?.name || "Unknown User";
+    if (chat.type === "GROUP") return chat.title || "Group Chat";
+    const partner = chat.members?.find((m: any) => m.userId !== user?.id);
+    return partner?.user?.name || "Saved Messages";
   };
 
   const getChatAvatar = (chat: any) => {
     if (chat.type === "GROUP") return chat.photoUrl || "/logo.png";
-    const partner = chat.members.find((m: any) => m.userId !== user?.id);
+    const partner = chat.members?.find((m: any) => m.userId !== user?.id);
     return partner?.user?.avatarUrl;
   };
 

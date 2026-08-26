@@ -241,7 +241,7 @@ export function Sidebar() {
 
   const getChatPartner = (chat: any) => {
     if (chat.type === "DIRECT" && user) {
-      const partner = chat.members.find((m: any) => m.userId !== user.id)?.user;
+      const partner = chat.members?.find((m: any) => m.userId !== user.id)?.user;
       return partner || { name: "Saved Messages", avatarUrl: null, id: "" };
     }
     return { name: chat.title || "Group Chat", avatarUrl: chat.photoUrl || "/logo.png", id: "" };

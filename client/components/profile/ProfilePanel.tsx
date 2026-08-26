@@ -47,7 +47,7 @@ export function ProfilePanel({ onClose, chatId }: ProfilePanelProps) {
   // Resolve partner details for DMs
   const getPartner = () => {
     if (chat?.type === "DIRECT" && user) {
-      const partner = chat.members.find((m) => m.userId !== user.id)?.user;
+      const partner = chat.members?.find((m: any) => m.userId !== user.id)?.user;
       return {
         name: partner?.name || "User",
         username: partner?.username || "user",

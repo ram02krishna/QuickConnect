@@ -53,7 +53,7 @@ export function MessageBubble({ message, searchQuery, isActiveSearchMatch = fals
   };
 
   const chat = useChatStore((state) => state.chats.find(c => c.id === message.chatId));
-  const otherMembersCount = chat ? Math.max(1, chat.members.length - 1) : 1;
+  const otherMembersCount = chat ? Math.max(1, (chat.members?.length || 1) - 1) : 1;
   const receipts = message.receipts || [];
   
   const deliveredCount = receipts.filter((r: any) => r.deliveredAt || r.readAt).length;
@@ -93,7 +93,7 @@ export function MessageBubble({ message, searchQuery, isActiveSearchMatch = fals
       <div className={cn("flex flex-col max-w-[88%] sm:max-w-[78%] md:max-w-[70%]", isSelf ? "items-end" : "items-start")}>
         {!isSelf && (
           <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 pl-2 mb-0.5">
-            {message.sender.name}
+            {message.sender?.name || "User"}
           </span>
         )}
 
