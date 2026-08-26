@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useState, use, useCallback } from "react";
+import { useEffect, useState, use, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useChatStore } from "@hooks/useChatStore";
 import { useSocketStore } from "@hooks/useSocketStore";
@@ -45,6 +45,31 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [activeSearchMatch, setActiveSearchMatch] = useState(0);
+
+  const searchMatches = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    if (!query) return [];
+    return messages.filter((message) => {
+      const attachmentNames = (message.attachments || [])
+        .map((attachment: any) => attachment.fileName || "")
+        .join(" ");
+      return `${message.content || ""} ${attachmentNames}`.toLocaleLowerCase().includes(query);
+    });
+  }, [messages, searchQuery]);
+
+  useEffect(() => {
+    setActiveSearchMatch(0);
+  }, [searchQuery]);
+
+  const navigateSearch = useCallback((direction: "up" | "down") => {
+    if (searchMatches.length === 0) return;
+    setActiveSearchMatch((current) =>
+      direction === "down"
+        ? (current + 1) % searchMatches.length
+        : (current - 1 + searchMatches.length) % searchMatches.length
+    );
+  }, [searchMatches.length]);
 
   // Redirect back to chats list if the selected chat ID gets cleared/deleted
   useEffect(() => {
@@ -75,6 +100,10 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
   useEffect(() => {
     const fetchMessages = async () => {
       const cached = useChatStore.getState().messages[chatId];
+      if (cached && cached.length > 0) {
+        setLoading(false);
+        return;
+      }
       if (!cached || cached.length === 0) {
         setLoading(true);
       }
@@ -202,8 +231,8 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
   }, [chatId, messages, loadingMore]);
 
   return (
-    <div className="flex-1 flex h-full min-w-0 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 relative overflow-hidden">
-      <div className="flex-1 flex flex-col h-full min-w-0 relative z-10 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+    <div className="chat-canvas flex-1 flex h-full min-w-0 text-zinc-900 dark:text-zinc-100 relative overflow-hidden">
+      <div className="flex-1 flex flex-col h-full min-w-0 relative z-10 border-r border-zinc-200/70 dark:border-zinc-800 bg-transparent">
         
         <ChatHeader
           chatId={chatId}
@@ -213,15 +242,20 @@ export default function ChatDetailPage({ params }: { params: Promise<{ chatId: s
           setIsSearchOpen={setIsSearchOpen}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          searchMatchCount={searchMatches.length}
+          activeSearchMatch={activeSearchMatch}
+          onSearchNavigate={navigateSearch}
         />
 
         <MessageList
           chatId={chatId}
           messages={messages}
           searchQuery={searchQuery}
+          searchTargetId={searchMatches[activeSearchMatch]?.id}
           onLoadMore={loadOlderMessages}
           loadingMore={loadingMore}
           isLoading={loading}
+          onRetry={handleRetryMessage}
         />
 
         {/* Input Bar */}

@@ -20,7 +20,7 @@ export function Avatar({
 }: AvatarProps) {
   // Get initials if no image
   const getInitials = (n: string) => {
-    return n
+    return (n || "User")
       .split(" ")
       .map((part) => part[0])
       .slice(0, 2)
@@ -59,6 +59,16 @@ export function Avatar({
           <span>{getInitials(name)}</span>
         )}
       </div>
+
+      {showStatus && (
+        <span
+          className={cn(
+            "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-zinc-900",
+            isOnline ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600"
+          )}
+          aria-label={isOnline ? "Online" : "Offline"}
+        />
+      )}
 
     </div>
   );

@@ -12,9 +12,6 @@ dist/
 # Uploads
 uploads/
 
-# Prisma
-prisma/migrations/
-
 # Logs
 logs/
 *.log

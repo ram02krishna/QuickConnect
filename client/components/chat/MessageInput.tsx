@@ -38,6 +38,25 @@ export function MessageInput({ chatId, onSendMessage, replyingTo, onCancelReply 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
 
+  const draftKey = `quickconnect:draft:${chatId}`;
+
+  useEffect(() => {
+    const savedDraft = window.localStorage.getItem(draftKey);
+    setText(savedDraft || "");
+  }, [draftKey]);
+
+  useEffect(() => {
+    const saveDraft = window.setTimeout(() => {
+      if (text.trim()) {
+        window.localStorage.setItem(draftKey, text);
+      } else {
+        window.localStorage.removeItem(draftKey);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(saveDraft);
+  }, [draftKey, text]);
+
   const emojis = ["😀", "😂", "😍", "👍", "🔥", "🎉", "👏", "❤️", "🙌", "🙏", "😮", "😢", "🌟", "💡", "🚀", "✨", "💯", "✅"];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,6 +106,7 @@ export function MessageInput({ chatId, onSendMessage, replyingTo, onCancelReply 
 
       const content = text;
       setText("");
+      window.localStorage.removeItem(draftKey);
 
       await onSendMessage(content, "TEXT", replyingTo?.id || null);
       if (replyingTo && onCancelReply) onCancelReply();
@@ -333,7 +353,7 @@ export function MessageInput({ chatId, onSendMessage, replyingTo, onCancelReply 
 
   return (
     <div className="relative">
-      <div className="p-3 border-t border-[#e9edef]/60 dark:border-[#222e35]/40 bg-[#f0f2f5]/65 dark:bg-[#202c33]/70 backdrop-blur-md relative z-20 text-zinc-900 dark:text-zinc-100 select-none">
+      <div className="surface-glass p-3 border-t border-slate-200/70 dark:border-white/5 relative z-20 text-zinc-900 dark:text-zinc-100 select-none">
 
       {replyingTo && (
         <div className="flex items-center justify-between p-2.5 mb-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-base">
@@ -446,7 +466,7 @@ export function MessageInput({ chatId, onSendMessage, replyingTo, onCancelReply 
                 onChange={handleInputChange}
                 placeholder={uploading ? "Uploading file..." : "Type a message"}
                 disabled={uploading}
-                className="w-full px-4 py-2.5 rounded-xl border border-[#e9edef]/20 dark:border-white/5 ios-glass-input text-zinc-900 dark:text-[#e9edef] placeholder-[#667781] dark:placeholder-[#8696a0] focus:outline-none transition-all text-base md:text-base disabled:opacity-50"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white/90 dark:bg-black/10 dark:border-white/5 shadow-sm text-zinc-900 dark:text-[#e9edef] placeholder-[#667781] dark:placeholder-[#8696a0] focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 transition-all text-base md:text-base disabled:opacity-50"
               />
           </div>
 

@@ -167,7 +167,9 @@ export async function login(input: LoginInput) {
       username: user.username,
       email: decryptDeterministic(user.email),
       avatarUrl: user.avatarUrl,
+      bio: user.bio,
       emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
     },
   };
 }

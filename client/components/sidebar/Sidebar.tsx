@@ -2,11 +2,13 @@
 
 import * as React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { Search, LogOut, UserPlus, MessageCircle, X, CircleDot, ChevronLeft, Plus, Users, Camera, Video, Mic, FileText } from "lucide-react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Search, LogOut, UserPlus, MessageCircle, X, CircleDot, ChevronLeft, Plus, Users, Camera, Video, Mic, FileText, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useAuthStore } from "@hooks/useAuthStore";
 import { useChatStore } from "@hooks/useChatStore";
 import { useSocketStore } from "@hooks/useSocketStore";
+import { useUIStore } from "@hooks/useUIStore";
 import { Avatar } from "@components/ui/Avatar";
 import { Input } from "@components/ui/Input";
 import api from "@lib/api";
@@ -85,7 +87,7 @@ const ChatItem = React.memo(function ChatItem({
             <>
               {preview.isMe && (
                 <span className={`font-bold select-none mr-1 leading-none tracking-tight flex-shrink-0 ${
-                  preview.isRead ? "text-[#34b7f1] dark:text-[#5D32FA]" : "text-zinc-400 dark:text-zinc-500/80"
+                  preview.isRead ? "text-green-800 dark:text-green-400" : "text-zinc-400 dark:text-zinc-500/80"
                 }`}>✓✓</span>
               )}
               <span className="flex items-center gap-1 truncate max-w-full leading-none">
@@ -115,6 +117,9 @@ const ChatItem = React.memo(function ChatItem({
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { resolvedTheme, setTheme } = useTheme();
+  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
 
   const user = useAuthStore((state) => state.user);
   const logoutStore = useAuthStore((state) => state.logout);
@@ -133,6 +138,21 @@ export function Sidebar() {
   const [searching, setSearching] = useState(false);
   const [filterTab, setFilterTab] = useState<"all" | "groups">("all");
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "find-people") {
+      setSidebarOpen(true);
+      const focusSearch = () => searchInputRef.current?.focus();
+      requestAnimationFrame(focusSearch);
+      const focusTimer = window.setTimeout(focusSearch, 120);
+      return () => window.clearTimeout(focusTimer);
+    }
+    if (action === "create-group") {
+      setShowGroupModal(true);
+    }
+  }, [searchParams, setSidebarOpen]);
 
   // Removed handleTogglePin and handleToggleArchive
 
@@ -224,7 +244,7 @@ export function Sidebar() {
       const partner = chat.members.find((m: any) => m.userId !== user.id)?.user;
       return partner || { name: "Saved Messages", avatarUrl: null, id: "" };
     }
-    return { name: chat.title || "Group Chat", avatarUrl: chat.photoUrl, id: "" };
+    return { name: chat.title || "Group Chat", avatarUrl: chat.photoUrl || "/logo.png", id: "" };
   };
 
   // Returns only the first word of a name
@@ -307,6 +327,14 @@ export function Sidebar() {
           {/* Action icons */}
           <div className="flex items-center gap-1">
             <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="p-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-all cursor-pointer"
+              title={resolvedTheme === "dark" ? "Use light theme" : "Use dark theme"}
+              aria-label={resolvedTheme === "dark" ? "Use light theme" : "Use dark theme"}
+            >
+              {resolvedTheme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            <button
               onClick={() => setShowGroupModal(true)}
               className="p-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-all cursor-pointer"
               title="New Group"
@@ -329,9 +357,11 @@ export function Sidebar() {
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 pointer-events-none" />
             <input
+              ref={searchInputRef}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search or start new chat"
+              placeholder={searchParams.get("action") === "find-people" ? "Type here to search for people" : "Search or start new chat"}
+              autoFocus={searchParams.get("action") === "find-people"}
               className="w-full pl-9 pr-8 py-2.5 sm:py-2 rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-base md:text-base text-zinc-800 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400 focus:outline-none focus:border-zinc-600"
             />
             {searchQuery && (

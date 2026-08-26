@@ -44,6 +44,7 @@ interface CallStoreState {
   initiateGroupCall: (chatId: string, chatTitle: string, type: "audio" | "video") => Promise<void>;
   receiveGroupCall: (payload: { chatId: string, chatTitle: string, chatAvatar: string | null, fromUserId: string, fromUserName: string, fromUserAvatar: string | null, callType: "audio" | "video" }) => void;
   acceptGroupCall: () => Promise<void>;
+  respondToGroupCall: (status: "accepted" | "declined") => void;
   handleParticipantJoined: (userId: string) => Promise<void>;
   handleParticipantLeft: (userId: string) => void;
   handleGroupOffer: (fromUserId: string, sdp: any, callType: "audio" | "video") => Promise<void>;
@@ -351,16 +352,20 @@ export const useCallStore = create<CallStoreState>((set, get) => {
     },
 
     declineCall: () => {
-      const { partner } = get();
-      if (partner) useSocketStore.getState().socket?.emit("call:decline", { targetUserId: partner.id });
+      const { partner, isGroupCall } = get();
+      if (isGroupCall) {
+        get().respondToGroupCall("declined");
+      } else if (partner) {
+        useSocketStore.getState().socket?.emit("call:decline", { targetUserId: partner.id });
+      }
       get().resetCallStore();
     },
 
     endCall: () => {
-      const { partner, isGroupCall, groupChatId } = get();
+      const { callState, partner, isGroupCall, groupChatId } = get();
       const socket = useSocketStore.getState().socket;
       if (isGroupCall && groupChatId) {
-        socket?.emit("call:leave-group", { chatId: groupChatId });
+        socket?.emit(callState === "outgoing" ? "call:end-group" : "call:leave-group", { chatId: groupChatId });
       } else if (partner) {
         socket?.emit("call:hangup", { targetUserId: partner.id });
       }
@@ -449,10 +454,21 @@ export const useCallStore = create<CallStoreState>((set, get) => {
 
         // Tell everyone in the group chat we joined, so they can send us offers
         useSocketStore.getState().socket?.emit("call:join-group", { chatId: groupChatId });
+        get().respondToGroupCall("accepted");
       } catch (err) {
         console.error("Failed to answer group call:", err);
+        get().respondToGroupCall("declined");
         get().resetCallStore();
       }
+    },
+
+    respondToGroupCall: (status) => {
+      const { groupChatId } = get();
+      if (!groupChatId) return;
+      useSocketStore.getState().socket?.emit("call:group-response", {
+        chatId: groupChatId,
+        status,
+      });
     },
 
     handleParticipantJoined: async (userId) => {

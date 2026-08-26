@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
-import { X, Search, Loader2, Users, Check } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Search, Loader2, Users, Check, Image as ImageIcon } from "lucide-react";
+import imageCompression from "browser-image-compression";
 import { Avatar } from "@components/ui/Avatar";
 import { Button } from "@components/ui/Button";
 import api from "@lib/api";
@@ -14,12 +15,71 @@ interface NewGroupModalProps {
 
 export function NewGroupModal({ onClose, onGroupCreated }: NewGroupModalProps) {
   const [title, setTitle] = useState("");
-  const [photoUrl, setPhotoUrl] = useState("");
+  const [groupImage, setGroupImage] = useState<File | null>(null);
+  const [groupImagePreview, setGroupImagePreview] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [creating, setCreating] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const removeSelectedUser = (userId: string) => {
+    setSelectedUsers((users) => users.filter((user) => user.id !== userId));
+  };
+
+  useEffect(() => {
+    if (!groupImage) {
+      setGroupImagePreview("");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(groupImage);
+    setGroupImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [groupImage]);
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please choose an image file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image is too large. Maximum size is 10MB.");
+      event.target.value = "";
+      return;
+    }
+    setGroupImage(file);
+  };
+
+  const uploadGroupImage = async (file: File) => {
+    const compressedFile = await imageCompression(file, {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 1024,
+      useWebWorker: true,
+    });
+    const uploadFile = new File([compressedFile], file.name, {
+      type: compressedFile.type,
+      lastModified: Date.now(),
+    });
+    const sigRes = await api.get("/media/signature?folder=chat-app/general");
+    const { signature, timestamp, cloudName, apiKey, folder } = sigRes.data.data;
+    const formData = new FormData();
+    formData.append("file", uploadFile);
+    formData.append("api_key", apiKey);
+    formData.append("timestamp", timestamp.toString());
+    formData.append("signature", signature);
+    formData.append("folder", folder);
+    const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!cloudinaryRes.ok) throw new Error("Failed to upload group image");
+    const uploadedFile = await cloudinaryRes.json();
+    return uploadedFile.secure_url as string;
+  };
 
   // Trigger search when query is typed
   useEffect(() => {
@@ -61,9 +121,10 @@ export function NewGroupModal({ onClose, onGroupCreated }: NewGroupModalProps) {
 
     setCreating(true);
     try {
+      const uploadedPhotoUrl = groupImage ? await uploadGroupImage(groupImage) : "";
       const res = await api.post("/chats/group", {
         title,
-        photoUrl: photoUrl || undefined,
+        photoUrl: uploadedPhotoUrl || undefined,
         memberIds: selectedUsers.map((u) => u.id),
       });
 
@@ -110,29 +171,50 @@ export function NewGroupModal({ onClose, onGroupCreated }: NewGroupModalProps) {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Type group name here..."
+                maxLength={80}
                 required
                 className="w-full px-4 py-2.5 rounded-xl border border-zinc-200/60 dark:border-white/5 ios-glass-input text-base sm:text-base text-zinc-900 dark:text-[#e9edef] placeholder-[#667781] dark:placeholder-[#8696a0] focus:outline-none"
               />
+              <p className="text-right text-xs text-zinc-400 dark:text-zinc-500 mt-1">{title.length}/80</p>
             </div>
             <div>
               <label className="block text-base uppercase font-bold tracking-wider text-zinc-450 dark:text-zinc-500 mb-1.5">
-                Group Icon URL (Optional)
+                Group Photo (Optional)
               </label>
-              <input
-                type="text"
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                placeholder="https://example.com/avatar.jpg"
-                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200/60 dark:border-white/5 ios-glass-input text-base sm:text-base text-zinc-900 dark:text-[#e9edef] placeholder-[#667781] dark:placeholder-[#8696a0] focus:outline-none"
-              />
+              <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 dark:border-white/15 px-3 py-2.5 text-left hover:bg-zinc-50 dark:hover:bg-white/5 cursor-pointer"
+              >
+                <Avatar src={groupImagePreview || "/logo.png"} name={title || "New group"} size="sm" />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold text-zinc-700 dark:text-zinc-200 truncate">
+                    {groupImage ? groupImage.name : "Choose from this computer"}
+                  </span>
+                  <span className="block text-xs text-zinc-400 dark:text-zinc-500">PNG, JPG or WEBP up to 10MB</span>
+                </span>
+                <ImageIcon size={17} className="text-zinc-400 flex-shrink-0" />
+              </button>
             </div>
           </div>
 
           {/* Members Search & List */}
           <div className="flex-1 flex flex-col min-h-0">
-            <label className="block text-base uppercase font-bold tracking-wider text-zinc-450 dark:text-zinc-500 mb-1.5">
-              Add Members ({selectedUsers.length} selected)
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-base uppercase font-bold tracking-wider text-zinc-450 dark:text-zinc-500">
+                Add Members ({selectedUsers.length} selected)
+              </label>
+              {selectedUsers.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedUsers([])}
+                  className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
 
             {/* Selected Users Chips */}
             {selectedUsers.length > 0 && (
@@ -140,12 +222,18 @@ export function NewGroupModal({ onClose, onGroupCreated }: NewGroupModalProps) {
                 {selectedUsers.map((u) => (
                   <div
                     key={u.id}
-                    onClick={() => toggleSelectUser(u)}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-600/10 text-blue-650 dark:text-zinc-500 border border-zinc-600/15 text-base font-semibold cursor-pointer hover:bg-zinc-600/20 transition-all select-none"
                   >
                     <Avatar src={u.avatarUrl} name={u.name} size="xs" />
                     <span>{u.name.split(" ")[0]}</span>
-                    <X size={10} className="stroke-[3px]" />
+                    <button
+                      type="button"
+                      onClick={() => removeSelectedUser(u.id)}
+                      className="rounded-full hover:bg-zinc-600/15 p-0.5 cursor-pointer"
+                      aria-label={`Remove ${u.name}`}
+                    >
+                      <X size={10} className="stroke-[3px]" />
+                    </button>
                   </div>
                 ))}
               </div>

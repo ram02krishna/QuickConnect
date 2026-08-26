@@ -29,7 +29,7 @@ export async function getOrCreateDirectChat(userId: string, targetUserId: string
     },
     include: {
       members: {
-        include: { user: { select: { id: true, name: true, username: true, avatarUrl: true, email: true } } },
+        include: { user: { select: { id: true, name: true, username: true, avatarUrl: true, bio: true, email: true } } },
       },
       lastMessage: {
         select: {
@@ -61,7 +61,7 @@ export async function getOrCreateDirectChat(userId: string, targetUserId: string
     },
     include: {
       members: {
-        include: { user: { select: { id: true, name: true, username: true, avatarUrl: true, email: true } } },
+        include: { user: { select: { id: true, name: true, username: true, avatarUrl: true, bio: true, email: true } } },
       },
       lastMessage: true,
     },
@@ -97,7 +97,7 @@ export async function createGroupChat(
     },
     include: {
       members: {
-        include: { user: { select: { id: true, name: true, username: true, avatarUrl: true, email: true } } },
+        include: { user: { select: { id: true, name: true, username: true, avatarUrl: true, bio: true, email: true } } },
       },
     },
   });
@@ -109,7 +109,11 @@ export async function createGroupChat(
 export async function invalidateInboxCache(userIds: string[]) {
   const keys = userIds.map((id) => `inbox:${id}`);
   if (keys.length > 0) {
-    await redis.del(...keys);
+    try {
+      await redis.del(...keys);
+    } catch (error) {
+      console.warn("Failed to invalidate inbox cache:", error);
+    }
   }
 }
 
@@ -135,7 +139,7 @@ export async function getUserChats(userId: string) {
           },
           members: {
             include: {
-              user: { select: { id: true, name: true, username: true, avatarUrl: true, email: true } },
+              user: { select: { id: true, name: true, username: true, avatarUrl: true, bio: true, email: true } },
             },
           },
         },
@@ -162,7 +166,7 @@ export async function getChatById(chatId: string, userId: string) {
     include: {
       members: {
         include: {
-          user: { select: { id: true, name: true, username: true, avatarUrl: true, email: true } },
+          user: { select: { id: true, name: true, username: true, avatarUrl: true, bio: true, email: true } },
         },
       },
       lastMessage: {

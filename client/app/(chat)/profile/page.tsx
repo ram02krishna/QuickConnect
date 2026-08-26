@@ -3,8 +3,7 @@
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Loader2, Save, BadgeCheck, Sun, Moon } from "lucide-react";
-import { useTheme } from "next-themes";
+import { ArrowLeft, Camera, Loader2, Save, BadgeCheck, Copy, CheckCircle2, MessageCircle } from "lucide-react";
 import { useAuthStore } from "@hooks/useAuthStore";
 import imageCompression from "browser-image-compression";
 import { Avatar } from "@components/ui/Avatar";
@@ -14,25 +13,50 @@ import api from "@lib/api";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [username, setUsername] = useState(user?.username || "");
   const [bio, setBio] = useState((user as any)?.bio || "");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadProfile = async () => {
+      try {
+        const res = await api.get("/users/me");
+        const profile = res.data.data.user;
+        if (!isActive) return;
+        updateUser(profile);
+        setName(profile.name || "");
+        setUsername(profile.username || "");
+        setBio(profile.bio || "");
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      }
+    };
+    void loadProfile();
+    return () => { isActive = false; };
+  }, [updateUser]);
+
+  const copyHandle = async () => {
+    if (!user?.username) return;
+    try {
+      await navigator.clipboard.writeText(`@${user.username}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError("Could not copy your profile handle.");
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +73,9 @@ export default function ProfilePage() {
 
       // Update user state in Zustand store
       updateUser(res.data.data.user);
+      setName(res.data.data.user.name);
+      setUsername(res.data.data.user.username);
+      setBio(res.data.data.user.bio || "");
       setSuccess("Profile updated successfully!");
     } catch (err: any) {
       console.error(err);
@@ -124,9 +151,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 select-none overflow-y-auto transition-colors duration-300">
+    <div className="chat-canvas flex-1 flex flex-col h-full text-zinc-900 dark:text-zinc-100 select-none overflow-y-auto transition-colors duration-300">
       {/* Header */}
-      <div className="p-4 flex items-center justify-between border-b border-[#e9edef] dark:border-[#222e35] bg-[#f0f2f5] dark:bg-[#202c33]">
+      <div className="surface-glass p-4 flex items-center justify-between border-b border-slate-200/70 dark:border-white/5 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push("/chats")}
@@ -139,8 +166,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Profile Form Area */}
-      <div className="flex-1 max-w-xl w-full mx-auto p-6 md:p-10 space-y-8">
-        <div className="flex flex-col items-center gap-4 text-center">
+      <div className="flex-1 max-w-xl w-full mx-auto p-5 md:p-10 space-y-6">
+        <div className="surface-glass rounded-3xl border border-white/70 dark:border-white/10 p-6 sm:p-8 shadow-xl shadow-slate-200/40 dark:shadow-black/10 flex flex-col items-center gap-4 text-center">
           {/* Avatar Upload Container */}
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
             <Avatar src={user?.avatarUrl} name={user?.name} size="xl" className="shadow-2xl border-2 border-white/10" />
@@ -170,9 +197,13 @@ export default function ProfilePage() {
             </h3>
             <p className="text-base text-zinc-500 font-medium">@{user?.username}</p>
           </div>
+          <button type="button" onClick={copyHandle} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-sky-700 hover:bg-sky-500/10 dark:text-sky-300 transition-colors">
+            {copied ? <CheckCircle2 size={15} /> : <Copy size={15} />}
+            {copied ? "Handle copied" : "Copy profile handle"}
+          </button>
         </div>
 
-        <form onSubmit={handleUpdateProfile} className="space-y-5">
+        <form onSubmit={handleUpdateProfile} className="surface-glass rounded-3xl border border-white/70 dark:border-white/10 p-5 sm:p-7 shadow-xl shadow-slate-200/40 dark:shadow-black/10 space-y-5">
           {error && (
             <div className="p-3.5 rounded-xl border border-red-500/20 bg-red-500/10 text-base text-red-400 font-medium">
               {error}
@@ -226,9 +257,13 @@ export default function ProfilePage() {
               placeholder="Tell others about yourself..."
               rows={4}
               maxLength={160}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-700/50 bg-white/5 text-zinc-100 dark:border-zinc-800/80 dark:bg-black/10 light:text-zinc-900 light:border-zinc-300 light:bg-white/40 placeholder-zinc-500 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all duration-200 text-base"
+              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white/90 text-zinc-900 shadow-sm placeholder-zinc-400 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 transition-all duration-200 text-base dark:border-white/10 dark:bg-black/10 dark:text-zinc-100 dark:placeholder-zinc-500"
               disabled={loading || uploading}
             />
+            <div className="flex items-center justify-between px-1 text-xs text-zinc-400 dark:text-zinc-500">
+              <span>Your bio is visible to people you chat with.</span>
+              <span>{bio.length}/160</span>
+            </div>
           </div>
 
           <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -242,6 +277,11 @@ export default function ProfilePage() {
                 {user?.emailVerified ? "Verified" : "Unverified"}
               </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-xl bg-sky-500/10 px-3.5 py-3 text-sm text-sky-800 dark:text-sky-200">
+            <MessageCircle size={16} className="flex-shrink-0" />
+            Keep your bio short and recognisable so contacts know they found the right person.
           </div>
 
           <Button

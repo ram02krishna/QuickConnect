@@ -95,6 +95,8 @@ export function setupChatSockets(io: Server, socket: Socket) {
         select: { title: true, photoUrl: true, members: { select: { userId: true } } },
       });
 
+      if (!chat?.members.some((member) => member.userId === userId)) return;
+
       if (chat) {
         for (const member of chat.members) {
           if (member.userId !== userId) {
@@ -118,6 +120,30 @@ export function setupChatSockets(io: Server, socket: Socket) {
   socket.on("call:join-group", ({ chatId }: any) => {
     if (!chatId) return;
     socket.to(`chat:${chatId}`).emit("call:participant-joined", { userId });
+  });
+
+  socket.on("call:group-response", async ({ chatId, status }: { chatId: string; status: "accepted" | "declined" }) => {
+    if (!chatId || !["accepted", "declined"].includes(status)) return;
+    const member = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+    if (!member) return;
+    const responder = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    io.to(`chat:${chatId}`).emit("call:group-response", {
+      chatId,
+      userId,
+      userName: responder?.name || "Someone",
+      status,
+    });
+  });
+
+  socket.on("call:end-group", async ({ chatId }: { chatId: string }) => {
+    if (!chatId) return;
+    const member = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId, userId } },
+    });
+    if (!member) return;
+    socket.to(`chat:${chatId}`).emit("call:group-ended", { chatId });
   });
 
   socket.on("call:leave-group", ({ chatId }: any) => {

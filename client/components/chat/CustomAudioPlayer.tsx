@@ -2,14 +2,15 @@
 
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Loader2, Download } from "lucide-react";
 
 interface CustomAudioPlayerProps {
   src: string;
   isSelf?: boolean;
+  onDownload?: () => void;
 }
 
-export function CustomAudioPlayer({ src, isSelf = false }: CustomAudioPlayerProps) {
+export function CustomAudioPlayer({ src, isSelf = false, onDownload }: CustomAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -168,6 +169,22 @@ export function CustomAudioPlayer({ src, isSelf = false }: CustomAudioPlayerProp
       >
         {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
       </button>
+
+      {onDownload && (
+        <button
+          type="button"
+          onClick={onDownload}
+          className={`p-1.5 rounded-full cursor-pointer transition-colors ${
+            isSelf
+              ? "text-white/80 hover:text-white hover:bg-white/10"
+              : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5"
+          }`}
+          title="Download audio"
+          aria-label="Download audio"
+        >
+          <Download size={15} />
+        </button>
+      )}
 
     </div>
   );

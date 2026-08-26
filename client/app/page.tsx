@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { MessageCircle, Users, FileText, ArrowRight, Github } from "lucide-react";
+import { MessageCircle, Users, FileText, ArrowRight, Github, Moon, Sun } from "lucide-react";
 import { Button } from "@components/ui/Button";
+import { useTheme } from "next-themes";
 
 export default function LandingPage() {
+  const { resolvedTheme, setTheme } = useTheme();
+
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans flex flex-col select-none">
       {/* Navbar */}
@@ -14,7 +17,16 @@ export default function LandingPage() {
             <img src="/logo.png" alt="QuickConnect Logo" className="w-8 h-8 rounded-xl object-contain" />
             <span className="font-bold text-xl tracking-tight">QuickConnect</span>
           </div>
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-2 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
+              title={resolvedTheme === "dark" ? "Use light theme" : "Use dark theme"}
+              aria-label={resolvedTheme === "dark" ? "Use light theme" : "Use dark theme"}
+            >
+              {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             <Link href="/login" className="text-sm font-medium hover:text-brand-primary transition-colors">
               Log in
             </Link>

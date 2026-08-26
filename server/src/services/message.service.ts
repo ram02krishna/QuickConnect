@@ -19,6 +19,8 @@ const messageInclude = {
   receipts: { select: { userId: true, deliveredAt: true, readAt: true } },
 } as const;
 
+const deletedMessageText = "This message was deleted";
+
 export async function sendMessage(
   chatId: string,
   senderId: string,
@@ -72,7 +74,13 @@ export async function sendMessage(
   const allMemberIds = chat.members.map((m) => m.userId);
   await invalidateInboxCache(allMemberIds);
   const messageKeys = allMemberIds.map((id) => `messages:${chatId}:${id}`);
-  if (messageKeys.length > 0) await redis.del(...messageKeys);
+  if (messageKeys.length > 0) {
+    try {
+      await redis.del(...messageKeys);
+    } catch (error) {
+      console.warn("Failed to invalidate message cache:", error);
+    }
+  }
 
   return decryptMessageObj(message);
 }
@@ -97,7 +105,7 @@ export async function getChatMessages(
   }
 
   const messages = await prisma.message.findMany({
-    where: { chatId },
+    where: { chatId, deletions: { none: { userId } } },
     take: limit,
     ...(cursor && { skip: 1, cursor: { id: cursor } }),
     orderBy: { createdAt: "desc" },
@@ -111,4 +119,55 @@ export async function getChatMessages(
   }
 
   return result;
+}
+
+export async function deleteMessage(
+  chatId: string,
+  messageId: string,
+  userId: string,
+  scope: "me" | "everyone"
+) {
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    include: { chat: { include: { members: { select: { userId: true } } } } },
+  });
+
+  if (!message || message.chatId !== chatId) throw new ApiError(404, "Message not found");
+  if (!message.chat.members.some((member) => member.userId === userId)) {
+    throw new ApiError(403, "You are not a member of this chat");
+  }
+
+  if (scope === "everyone") {
+    if (message.senderId !== userId) {
+      throw new ApiError(403, "Only the sender can delete this message for everyone");
+    }
+    if (message.deletedForEveryoneAt) {
+      return { scope, chatId, messageId, memberIds: message.chat.members.map((member) => member.userId) };
+    }
+
+    const deletedAt = new Date();
+    await prisma.message.update({
+      where: { id: messageId },
+      data: {
+        content: encryptMessage(deletedMessageText),
+        type: "TEXT",
+        deletedForEveryoneAt: deletedAt,
+        attachments: { deleteMany: {} },
+      },
+    });
+
+    const memberIds = message.chat.members.map((member) => member.userId);
+    await invalidateInboxCache(memberIds);
+    const messageKeys = memberIds.map((id) => `messages:${chatId}:${id}`);
+    if (messageKeys.length > 0) await redis.del(...messageKeys);
+    return { scope, chatId, messageId, memberIds, deletedAt };
+  }
+
+  await prisma.messageDeletion.upsert({
+    where: { messageId_userId: { messageId, userId } },
+    update: {},
+    create: { messageId, userId },
+  });
+  await redis.del(`messages:${chatId}:${userId}`);
+  return { scope, chatId, messageId, memberIds: [userId] };
 }

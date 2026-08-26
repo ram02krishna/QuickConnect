@@ -3,6 +3,7 @@ import { prisma } from "../config/prisma.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { decryptDeterministic } from "../services/crypto.service.js";
+import { invalidateInboxCache } from "../services/chat.service.js";
 
 export async function getMe(req: Request, res: Response) {
   const user = await prisma.user.findUnique({
@@ -54,6 +55,9 @@ export async function updateMe(req: Request, res: Response) {
   });
 
   updated.email = decryptDeterministic(updated.email);
+
+  // Chat lists cache member profiles, so invalidate it to surface profile changes immediately.
+  await invalidateInboxCache([req.user!.id]);
 
   sendSuccess(res, "Profile updated", { user: updated });
 }

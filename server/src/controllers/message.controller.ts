@@ -42,3 +42,23 @@ export async function fetchChatMessages(req: Request, res: Response) {
 
   sendSuccess(res, "Messages fetched", { messages });
 }
+
+export async function deleteChatMessage(req: Request, res: Response) {
+  const result = await messageService.deleteMessage(
+    req.params.chatId as string,
+    req.params.messageId as string,
+    req.user!.id,
+    req.body.scope
+  );
+
+  if (result.scope === "everyone") {
+    for (const memberId of result.memberIds) {
+      io.to(`user:${memberId}`).emit(SOCKET_EVENTS.MESSAGE_DELETED_FOR_EVERYONE, {
+        chatId: result.chatId,
+        messageId: result.messageId,
+      });
+    }
+  }
+
+  sendSuccess(res, "Message deleted", { result });
+}

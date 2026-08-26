@@ -21,11 +21,16 @@ const sendMessageSchema = z.object({
   ).optional(),
 });
 
+const deleteMessageSchema = z.object({
+  scope: z.enum(["me", "everyone"]),
+});
+
 // All message routes require authentication
 router.use(authenticate);
 
 // Chat specific endpoints
 router.post("/:chatId", validate(sendMessageSchema), messageController.sendNewMessage);
 router.get("/:chatId", messageController.fetchChatMessages);
+router.delete("/:chatId/:messageId", validate(deleteMessageSchema), messageController.deleteChatMessage);
 
 export default router;

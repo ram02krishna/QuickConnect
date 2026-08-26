@@ -44,7 +44,7 @@ export function ForwardMessageModal({ messageToForward, onClose, onForward }: Fo
   };
 
   const getChatAvatar = (chat: any) => {
-    if (chat.type === "GROUP") return chat.photoUrl;
+    if (chat.type === "GROUP") return chat.photoUrl || "/logo.png";
     const partner = chat.members.find((m: any) => m.userId !== user?.id);
     return partner?.user?.avatarUrl;
   };

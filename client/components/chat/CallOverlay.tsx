@@ -7,14 +7,16 @@ import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Volume2, Volume1, Volume
 import { Avatar } from "@components/ui/Avatar";
 import { toast } from "sonner";
 // Helper component to bind a MediaStream to a video element
-function  VideoStream({ stream, isLocal = false }: { stream: MediaStream, isLocal?: boolean }) {
+function VideoStream({ stream, isLocal = false }: { stream: MediaStream, isLocal?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
+    if (!videoRef.current || !stream) return;
+    // Always re-assign so track replacements (e.g. screen share) take effect
+    if (videoRef.current.srcObject !== stream) {
       videoRef.current.srcObject = stream;
     }
-  }, [stream]);
+  });
 
   return (
     <video
@@ -53,8 +55,9 @@ export function CallOverlay() {
   } = useCallStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const remoteAudioRef = useRef<HTMLVideoElement>(null);
   const [callDuration, setCallDuration] = useState(0);
-  const [isSpeaker, setIsSpeaker] = useState(false);
+  const [isSpeaker, setIsSpeaker] = useState(true); // true = speaker (default), false = earpiece
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Duration timer when connected
@@ -110,6 +113,27 @@ export function CallOverlay() {
     };
   }, [callState, setRingVolume]);
 
+  // Route remote audio to speaker or earpiece when isSpeaker changes
+  useEffect(() => {
+    if (!remoteAudioRef.current) return;
+    const el = remoteAudioRef.current as any;
+    if (typeof el.setSinkId === "function") {
+      // "" = default (speaker), a specific device ID for earpiece
+      // In web browsers we can only switch between default and communication devices
+      el.setSinkId(isSpeaker ? "" : "communications").catch(() => {
+        // setSinkId may fail if device isn't available — silently ignore
+      });
+    }
+  }, [isSpeaker]);
+
+  // Bind remote stream to the audio element
+  useEffect(() => {
+    if (!remoteAudioRef.current || !remoteStream) return;
+    if (remoteAudioRef.current.srcObject !== remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+    }
+  });
+
   if (callState === "idle" || (!partner && !isGroupCall)) return null;
 
   const formatTime = (secs: number) => {
@@ -156,7 +180,12 @@ export function CallOverlay() {
                     <VideoStream key={userId} stream={stream} />
                   ))
                 ) : (
-                  remoteStream && <VideoStream stream={remoteStream} />
+                  // Use our ref'd element so we can call setSinkId on it
+                  <video
+                    ref={remoteAudioRef}
+                    autoPlay
+                    playsInline
+                  />
                 )}
               </div>
             )}
@@ -326,9 +355,9 @@ export function CallOverlay() {
                           ? "bg-zinc-200/50 dark:bg-white/10 border-zinc-300 dark:border-white/15 text-zinc-700 dark:text-white hover:bg-zinc-300/50 dark:hover:bg-white/20"
                           : "bg-red-500/90 border-red-500 text-white"
                       }`}
-                      title={isSpeaker ? "Speaker On" : "Speaker Off"}
+                      title={isSpeaker ? "Speaker On (tap to mute speaker)" : "Speaker Off (tap to enable speaker)"}
                     >
-                      {isSpeaker ? <Volume2 size={20} /> : <Volume1 size={20} />}
+                      {isSpeaker ? <Volume2 size={20} /> : <VolumeX size={20} />}
                     </button>
                   )}
                 </div>

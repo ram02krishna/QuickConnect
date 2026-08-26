@@ -41,6 +41,7 @@ export interface Message {
   attachments?: Attachment[];
   isSending?: boolean;
   hasFailed?: boolean;
+  deletedForEveryoneAt?: string | null;
 }
 
 export interface Chat {
@@ -83,6 +84,8 @@ interface ChatState {
   failOptimisticMessage: (chatId: string, tempId: string) => void;
   retryOptimisticMessage: (chatId: string, tempId: string) => void;
   updateReceipt: (chatId: string, messageId: string, receipt: { userId: string; deliveredAt: string | null; readAt: string | null }) => void;
+  removeMessageForMe: (chatId: string, messageId: string) => void;
+  markMessageDeletedForEveryone: (chatId: string, messageId: string) => void;
 
   setSelectedChatId: (chatId: string | null) => void;
   setUserTyping: (chatId: string, userId: string, isTyping: boolean) => void;
@@ -133,6 +136,48 @@ export const useChatStore = create<ChatState>()(
       updateChat: (chatId, fields) =>
         set((state) => ({
           chats: state.chats.map((c) => (c.id === chatId ? { ...c, ...fields } : c)),
+        })),
+
+      removeMessageForMe: (chatId, messageId) =>
+        set((state) => {
+          const thread = state.messages[chatId] || [];
+          const updatedThread = thread.filter((message) => message.id !== messageId);
+          return {
+            messages: { ...state.messages, [chatId]: updatedThread },
+            chats: state.chats.map((chat) =>
+              chat.id === chatId && chat.lastMessageId === messageId
+                ? { ...chat, lastMessageId: null, lastMessage: null }
+                : chat
+            ),
+          };
+        }),
+
+      markMessageDeletedForEveryone: (chatId, messageId) =>
+        set((state) => ({
+          messages: {
+            ...state.messages,
+            [chatId]: (state.messages[chatId] || []).map((message) =>
+              message.id === messageId
+                ? {
+                    ...message,
+                    content: "This message was deleted",
+                    type: "TEXT",
+                    attachments: [],
+                    deletedForEveryoneAt: new Date().toISOString(),
+                  }
+                : message
+            ),
+          },
+          chats: state.chats.map((chat) =>
+            chat.id === chatId && chat.lastMessageId === messageId
+              ? {
+                  ...chat,
+                  lastMessage: chat.lastMessage
+                    ? { ...chat.lastMessage, content: "This message was deleted", type: "TEXT" }
+                    : chat.lastMessage,
+                }
+              : chat
+          ),
         })),
 
       setMessages: (chatId, messages) =>

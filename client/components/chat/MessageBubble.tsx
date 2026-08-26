@@ -1,20 +1,22 @@
 import * as React from "react";
-import { useState } from "react";
-import { Download, FileText, Play, Loader2, AlertCircle, Check, CheckCheck, Clock } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Download, FileText, Play, Loader2, AlertCircle, Check, CheckCheck, Clock, MoreHorizontal, Trash2, RotateCcw } from "lucide-react";
 import { cn } from "@lib/utils";
 import { useAuthStore } from "@hooks/useAuthStore";
 import { useChatStore } from "@hooks/useChatStore";
 import { Avatar } from "@components/ui/Avatar";
-import { API_BASE_URL } from "@lib/api";
+import api, { API_BASE_URL } from "@lib/api";
 import { CustomAudioPlayer } from "./CustomAudioPlayer";
 import { MediaLightbox } from "./MediaLightbox";
 
 export interface MessageBubbleProps {
   message: any;
   searchQuery?: string;
+  isActiveSearchMatch?: boolean;
+  onRetry?: (message: any) => void;
 }
 
-export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
+export function MessageBubble({ message, searchQuery, isActiveSearchMatch = false, onRetry }: MessageBubbleProps) {
   const user = useAuthStore((state) => state.user);
   
   // Lightbox viewer states
@@ -22,8 +24,25 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
   const [lightboxUrl, setLightboxUrl] = useState("");
   const [lightboxType, setLightboxType] = useState<"IMAGE" | "VIDEO" | "PDF">("IMAGE");
   const [lightboxName, setLightboxName] = useState("");
+  const [isDeleteMenuOpen, setIsDeleteMenuOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isDeleteMenuOpen) return;
+
+    const closeMenu = (event: PointerEvent) => {
+      if (!deleteMenuRef.current?.contains(event.target as Node)) {
+        setIsDeleteMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeMenu);
+    return () => document.removeEventListener("pointerdown", closeMenu);
+  }, [isDeleteMenuOpen]);
 
   const isSelf = message.senderId === user?.id;
+  const isDeletedForEveryone = Boolean(message.deletedForEveryoneAt);
   const isMediaOnly = message.attachments && message.attachments.length > 0 &&
     message.attachments.some((att: any) => att.fileType === "IMAGE" || att.fileType === "VIDEO") &&
     (message.content === message.attachments[0]?.fileName || !message.content);
@@ -43,11 +62,31 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
   const isRead = readCount >= otherMembersCount;
   const isDelivered = deliveredCount >= otherMembersCount;
 
+  const handleDelete = async (scope: "me" | "everyone") => {
+    if (scope === "everyone" && !window.confirm("Delete this message for everyone? This cannot be undone.")) return;
+
+    setIsDeleting(true);
+    try {
+      await api.delete(`/messages/${message.chatId}/${message.id}`, { data: { scope } });
+      if (scope === "me") {
+        useChatStore.getState().removeMessageForMe(message.chatId, message.id);
+      } else {
+        useChatStore.getState().markMessageDeletedForEveryone(message.chatId, message.id);
+      }
+      setIsDeleteMenuOpen(false);
+    } catch (error: any) {
+      console.error("Failed to delete message:", error);
+      alert(error.response?.data?.message || "Could not delete this message.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div
       className={cn(
         "flex gap-3 w-full max-w-2xl px-4 py-1.5 transition-all relative group justify-start",
-        isSelf ? "ml-auto flex-row-reverse" : "mr-auto flex-row"
+        isSelf ? "ml-auto flex-row-reverse pb-3" : "mr-auto flex-row"
       )}
     >
 
@@ -61,18 +100,45 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
         <div
           className={cn(
             isMediaOnly
-              ? "p-1 rounded-lg relative border overflow-hidden"
+              ? "p-1 rounded-lg relative border"
               : "px-4 py-2.5 rounded-lg relative border text-base sm:text-base leading-normal font-sans font-normal tracking-wide break-words whitespace-pre-wrap shadow-sm",
             isSelf
-              ? "bg-blue-500 text-white border-blue-600 rounded-tr-none"
-              : "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-600 rounded-tl-none",
+              ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white border-sky-500/60 rounded-tr-none shadow-sky-500/10"
+              : "bg-white/95 dark:bg-[#202c33] text-gray-900 dark:text-gray-100 border-white dark:border-white/5 rounded-tl-none",
+            isDeletedForEveryone && "bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-white/10 italic",
             message.isSending && "opacity-70",
             message.hasFailed && "border-red-500/30 bg-red-50 text-red-500 dark:bg-red-900/10"
           )}
         >
+          {!isDeletedForEveryone && !message.isSending && !message.id.startsWith("temp-") && (
+              <div ref={deleteMenuRef} className="absolute right-1 top-1 z-50">
+              <button
+                type="button"
+                onClick={() => setIsDeleteMenuOpen((open) => !open)}
+                className="rounded-full bg-white/80 p-1 text-zinc-500 opacity-0 shadow-sm transition-opacity hover:text-zinc-900 group-hover:opacity-100 focus:opacity-100 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:text-white"
+                aria-label="Message actions"
+                title="Message actions"
+              >
+                <MoreHorizontal size={15} />
+              </button>
+              {isDeleteMenuOpen && (
+                <div className={cn("absolute top-8 z-50 min-w-48 overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 text-left text-sm not-italic text-zinc-700 shadow-xl dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100", isSelf ? "right-0" : "left-0")}>
+                  <button type="button" onClick={() => void handleDelete("me")} disabled={isDeleting} className="flex w-full items-center gap-2 whitespace-nowrap px-3 py-2 text-left hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-white/10">
+                    <Trash2 size={14} /> Delete for me
+                  </button>
+                  {isSelf && (
+                    <button type="button" onClick={() => void handleDelete("everyone")} disabled={isDeleting} className="flex w-full items-center gap-2 whitespace-nowrap px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-500/10">
+                      <Trash2 size={14} /> Delete for everyone
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           {message.attachments && message.attachments.length > 0 && (
             <div className="space-y-2 mb-2 select-none">
-              {message.attachments.map((att: any) => {
+              {message.attachments.map((att: any, attachmentIndex: number) => {
+                const attachmentKey = att.id || `${message.id}-attachment-${attachmentIndex}`;
                 const isImg = att.mimeType?.startsWith("image/") || att.fileType === "IMAGE";
                 const isVid = att.mimeType?.startsWith("video/") || att.fileType === "VIDEO";
                 const isAud = att.mimeType?.startsWith("audio/") || att.fileType === "AUDIO";
@@ -80,7 +146,7 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
                 if (isImg) {
                   return (
                     <div
-                      key={att.id}
+                      key={attachmentKey}
                       onClick={(e) => {
                         e.stopPropagation();
                         setLightboxUrl(att.fileUrl);
@@ -101,7 +167,7 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
                           e.stopPropagation();
                           handleDownload(att.fileUrl, att.fileName);
                         }}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/85 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+                        className="absolute top-2 left-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/85 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center z-10"
                         title="Download image"
                       >
                         <Download size={14} />
@@ -113,7 +179,7 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
                 if (isVid) {
                   return (
                     <div
-                      key={att.id}
+                      key={attachmentKey}
                       onClick={(e) => {
                         e.stopPropagation();
                         setLightboxUrl(att.fileUrl);
@@ -139,7 +205,7 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
                           e.stopPropagation();
                           handleDownload(att.fileUrl, att.fileName);
                         }}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/85 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center z-10"
+                        className="absolute top-2 left-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/85 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center z-10"
                         title="Download video"
                       >
                         <Download size={14} />
@@ -150,8 +216,12 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
 
                 if (isAud) {
                   return (
-                    <div key={att.id} className="flex flex-col gap-1.5 p-1 max-w-xs">
-                      <CustomAudioPlayer src={att.fileUrl} isSelf={isSelf} />
+                    <div key={attachmentKey} className="flex flex-col gap-1.5 p-1 max-w-xs">
+                      <CustomAudioPlayer
+                        src={att.fileUrl}
+                        isSelf={isSelf}
+                        onDownload={() => handleDownload(att.fileUrl, att.fileName)}
+                      />
                     </div>
                   );
                 }
@@ -160,7 +230,7 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
 
                 return (
                   <div
-                    key={att.id}
+                    key={attachmentKey}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (isPdf) {
@@ -225,7 +295,7 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
               <p className="select-text">
                 {(() => {
                   const text = message.content || "";
-                  if (!searchQuery || !text) return text;
+                  if (!searchQuery || !text || !isActiveSearchMatch) return text;
                   const parts = text.split(
                     new RegExp(`(${searchQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")})`, "gi")
                   );
@@ -266,23 +336,37 @@ export function MessageBubble({ message, searchQuery }: MessageBubbleProps) {
                 minute: "2-digit",
               })}
             </span>
-            {isSelf && (
-              <span className={cn("ml-1 flex items-center", isRead ? "text-blue-400" : (isMediaOnly ? "text-white/90" : "text-white/70"))}>
+          </div>
+        </div>
+        {isSelf && (
+          <>
+            {message.hasFailed && onRetry ? (
+              <button
+                type="button"
+                onClick={() => onRetry(message)}
+                title="Tap to retry"
+                className="absolute right-5 bottom-0 translate-y-1/2 flex items-center gap-1 rounded-full px-1.5 py-0.5 shadow-sm bg-red-500 text-white text-[10px] font-semibold cursor-pointer hover:bg-red-600 active:bg-red-700 transition-colors select-none"
+              >
+                <RotateCcw size={10} />
+                <span>Retry</span>
+              </button>
+            ) : (
+              <span className={cn("absolute right-5 bottom-0 translate-y-1/2 flex items-center rounded-full p-0.5 shadow-sm", isRead ? "text-green-700 bg-white" : (isMediaOnly ? "text-white/90 bg-black/60" : "text-white/70 bg-white/90"))}>
                 {message.isSending ? (
                   <Clock size={12} />
                 ) : message.hasFailed ? (
                   <AlertCircle size={12} className="text-red-400" />
                 ) : isRead ? (
-                  <CheckCheck size={14} />
+                  <CheckCheck size={15} />
                 ) : isDelivered ? (
-                  <CheckCheck size={14} />
+                  <CheckCheck size={15} />
                 ) : (
-                  <Check size={14} />
+                  <Check size={15} />
                 )}
               </span>
             )}
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {!isSelf ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Virtuoso } from "react-virtuoso";
 import { MessageBubble } from "./MessageBubble";
 import { MessageCircleOff } from "lucide-react";
@@ -11,19 +11,24 @@ interface MessageListProps {
   chatId: string;
   messages: any[];
   searchQuery?: string;
+  searchTargetId?: string;
   onLoadMore?: () => void;
   loadingMore?: boolean;
   isLoading?: boolean;
+  onRetry?: (message: any) => void;
 }
 
 export function MessageList({
   chatId,
   messages,
   searchQuery,
+  searchTargetId,
   onLoadMore,
   loadingMore,
   isLoading = false,
+  onRetry,
 }: MessageListProps) {
+  const virtuosoRef = useRef<any>(null);
 
   const formatDateHeader = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -46,11 +51,24 @@ export function MessageList({
     });
   };
 
+  const filteredMessages = useMemo(() => {
+    const query = searchQuery?.trim().toLocaleLowerCase();
+    if (!query) return messages;
+
+    return messages.filter((message) => {
+      const messageText = message.content || "";
+      const attachmentNames = (message.attachments || [])
+        .map((attachment: any) => attachment.fileName || "")
+        .join(" ");
+      return `${messageText} ${attachmentNames}`.toLocaleLowerCase().includes(query);
+    });
+  }, [messages, searchQuery]);
+
   const items = useMemo(() => {
     const flatList: any[] = [];
     let currentDate = "";
 
-    messages.forEach((msg) => {
+    filteredMessages.forEach((msg) => {
       const msgDate = new Date(msg.createdAt).toDateString();
       if (msgDate !== currentDate) {
         flatList.push({ type: "date", value: msgDate, id: `date-${msgDate}` });
@@ -60,7 +78,15 @@ export function MessageList({
     });
     
     return flatList;
-  }, [messages]);
+  }, [filteredMessages]);
+
+  useEffect(() => {
+    if (!searchTargetId) return;
+    const targetIndex = items.findIndex((item) => item.type === "message" && item.value.id === searchTargetId);
+    if (targetIndex >= 0) {
+      virtuosoRef.current?.scrollToIndex({ index: targetIndex, align: "center", behavior: "smooth" });
+    }
+  }, [items, searchTargetId]);
 
   const currentChat = useChatStore((state: any) => state.chats.find((c: any) => c.id === chatId));
   const hasHistory = currentChat?.lastMessage != null;
@@ -85,7 +111,7 @@ export function MessageList({
     );
   }
 
-  if (messages.length > 0 && items.filter(i => i.type === "message").length === 0 && searchQuery) {
+  if (messages.length > 0 && filteredMessages.length === 0 && searchQuery?.trim()) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 p-6 select-none">
         <div className="bg-white dark:bg-zinc-900 px-6 py-5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center">
@@ -102,6 +128,7 @@ export function MessageList({
     <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
       <div className="flex-1 h-full w-full absolute inset-0">
         <Virtuoso
+          ref={virtuosoRef}
           style={{ height: "100%", width: "100%" }}
           data={items}
           firstItemIndex={0}
@@ -134,6 +161,8 @@ export function MessageList({
                 <MessageBubble
                   message={item.value}
                   searchQuery={searchQuery}
+                  isActiveSearchMatch={item.value.id === searchTargetId}
+                  onRetry={onRetry}
                 />
               </div>
             );

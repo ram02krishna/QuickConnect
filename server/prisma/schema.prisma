@@ -38,6 +38,7 @@ model User {
   members       ChatMember[]
   sentMessages  Message[]    @relation("MessageSender")
   messageReceipts MessageReceipt[]
+  deletedMessages MessageDeletion[]
 
   @@index([email])
   @@index([username])
@@ -85,6 +86,7 @@ model Message {
   content   String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+  deletedForEveryoneAt DateTime?
 
   chat              Chat      @relation("ChatMessages", fields: [chatId], references: [id], onDelete: Cascade)
   sender            User      @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
@@ -93,11 +95,25 @@ model Message {
 
   attachments Attachment[]
   receipts    MessageReceipt[]
+  deletions   MessageDeletion[]
 
   @@index([chatId])
   @@index([senderId])
   @@index([createdAt])
   @@index([chatId, createdAt(sort: Desc)])
+}
+
+model MessageDeletion {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
 }
 
 model Attachment {
@@ -129,4 +145,3 @@ model MessageReceipt {
   @@index([messageId])
   @@index([userId])
 }
-

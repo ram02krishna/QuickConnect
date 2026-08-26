@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface AuthCardProps {
   children: React.ReactNode;
@@ -10,8 +12,8 @@ interface AuthCardProps {
 }
 
 export function AuthCard({ children, title, subtitle }: AuthCardProps) {
-
   const [mounted, setMounted] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
 
   useEffect(() => {
     setMounted(true);
@@ -19,6 +21,15 @@ export function AuthCard({ children, title, subtitle }: AuthCardProps) {
 
   return (
     <div className="relative flex min-h-[100dvh] items-center justify-center p-4 overflow-hidden bg-white dark:bg-zinc-950 select-none">
+      <button
+        type="button"
+        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+        className="absolute top-5 right-5 z-20 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white/80 text-zinc-600 shadow-sm backdrop-blur transition-colors hover:bg-zinc-100 hover:text-zinc-950 dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+        title={resolvedTheme === "dark" ? "Use light theme" : "Use dark theme"}
+        aria-label={resolvedTheme === "dark" ? "Use light theme" : "Use dark theme"}
+      >
+        {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
 
       {/* Card */}  
       <div

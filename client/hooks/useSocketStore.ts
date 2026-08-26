@@ -77,6 +77,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useChatStore.getState().updateReceipt(payload.chatId, payload.messageId, payload.receipt);
     });
 
+    socket.on("message:deleted-for-everyone", (payload: { chatId: string; messageId: string }) => {
+      useChatStore.getState().markMessageDeletedForEveryone(payload.chatId, payload.messageId);
+    });
+
     socket.on("chat:deleted", (payload: { chatId: string }) => {
       useChatStore.getState().deleteChat(payload.chatId);
     });
@@ -129,6 +133,22 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on("call:participant-left", (payload) => {
       useCallStore.getState().handleParticipantLeft(payload.userId);
+    });
+
+    socket.on("call:group-response", (payload) => {
+      if (payload.status === "accepted") {
+        toast.success(`${payload.userName || "Someone"} joined the group call`);
+      } else {
+        toast.info(`${payload.userName || "Someone"} declined the group call`);
+      }
+    });
+
+    socket.on("call:group-ended", (payload) => {
+      const activeCall = useCallStore.getState();
+      if (activeCall.isGroupCall && activeCall.groupChatId === payload.chatId) {
+        activeCall.resetCallStore();
+        toast.info("Group call ended");
+      }
     });
 
     socket.on("call:offer", (payload) => {

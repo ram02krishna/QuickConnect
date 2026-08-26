@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, MoreVertical, Phone, Video, ArrowLeft, Image as ImageIcon, VolumeX, Menu, Info, Trash2, X } from "lucide-react";
+import { Search, MoreVertical, Phone, Video, ArrowLeft, Image as ImageIcon, VolumeX, Menu, Info, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { useAuthStore } from "@hooks/useAuthStore";
 import { useChatStore } from "@hooks/useChatStore";
 import { useUIStore } from "@hooks/useUIStore";
@@ -51,6 +51,9 @@ interface ChatHeaderProps {
   setIsSearchOpen?: (val: boolean) => void;
   searchQuery?: string;
   setSearchQuery?: (val: string) => void;
+  searchMatchCount?: number;
+  activeSearchMatch?: number;
+  onSearchNavigate?: (direction: "up" | "down") => void;
 }
 
 export function ChatHeader({
@@ -61,6 +64,9 @@ export function ChatHeader({
   setIsSearchOpen,
   searchQuery = "",
   setSearchQuery,
+  searchMatchCount = 0,
+  activeSearchMatch = 0,
+  onSearchNavigate,
 }: ChatHeaderProps) {
   const router = useRouter();
 
@@ -76,6 +82,8 @@ export function ChatHeader({
   const setSelectedChatId = useChatStore((state) => state.setSelectedChatId);
   const initiateCall = useCallStore((state) => state.initiateCall);
   const initiateGroupCall = useCallStore((state) => state.initiateGroupCall);
+  const callState = useCallStore((state) => state.callState);
+  const isInCall = callState !== "idle";
 
   useEffect(() => {
     setMounted(true);
@@ -90,7 +98,7 @@ export function ChatHeader({
       const partner = chat.members.find((m) => m.userId !== user.id)?.user;
       return partner || { name: "Saved Messages", avatarUrl: null, id: "" };
     }
-    return { name: chat.title || "Group Chat", avatarUrl: chat.photoUrl, id: "" };
+    return { name: chat.title || "Group Chat", avatarUrl: chat.photoUrl || "/logo.png", id: "" };
   };
 
   const partner = getPartner();
@@ -115,7 +123,7 @@ export function ChatHeader({
 
   return (
     <>
-      <div className="flex items-center justify-between px-4 h-[60px] border-b border-[#e9edef]/60 dark:border-[#222e35]/40 bg-[#f0f2f5]/65 dark:bg-[#202c33]/70 backdrop-blur-md relative z-20 text-[#111b21] dark:text-[#e9edef] select-none shadow-sm">
+      <div className="surface-glass flex items-center justify-between px-4 h-[64px] border-b border-slate-200/70 dark:border-white/5 relative z-20 text-[#111b21] dark:text-[#e9edef] select-none shadow-sm shadow-slate-200/30 dark:shadow-none">
         <div className="flex-1 flex items-center gap-3">
           <button
             onClick={toggleSidebar}
@@ -141,24 +149,41 @@ export function ChatHeader({
           </button>
 
           {isSearchOpen ? (
-            <div className="flex-1 max-w-md relative select-text">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#667781] dark:text-[#8696a0]" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
-                placeholder="Search messages..."
-                className="w-full pl-9 pr-8 py-1.5 rounded-full border border-[#e9edef]/20 dark:border-white/5 ios-glass-input text-base md:text-base text-zinc-900 dark:text-[#e9edef] placeholder-[#667781] dark:placeholder-[#8696a0] focus:outline-none"
-                autoFocus
-              />
-              {searchQuery && (
+            <div className="flex-1 max-w-lg relative select-text flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#667781] dark:text-[#8696a0]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
+                  placeholder="Search messages..."
+                  className="w-full pl-9 pr-8 py-1.5 rounded-full border border-[#e9edef]/20 dark:border-white/5 ios-glass-input text-base md:text-base text-zinc-900 dark:text-[#e9edef] placeholder-[#667781] dark:placeholder-[#8696a0] focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <span className="text-xs tabular-nums text-[#667781] dark:text-[#8696a0] whitespace-nowrap" aria-live="polite">
+                {searchQuery.trim() ? `${searchMatchCount ? activeSearchMatch + 1 : 0}/${searchMatchCount}` : ""}
+              </span>
+              <div className="flex items-center">
                 <button
-                  onClick={() => setSearchQuery && setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#667781] hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
+                  onClick={() => onSearchNavigate?.("up")}
+                  disabled={!searchMatchCount}
+                  className="p-1 rounded-full text-[#54656f] dark:text-[#aebac1] hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                  title="Previous match"
+                  aria-label="Previous match"
                 >
-                  <X size={12} />
+                  <ChevronUp size={17} />
                 </button>
-              )}
+                <button
+                  onClick={() => onSearchNavigate?.("down")}
+                  disabled={!searchMatchCount}
+                  className="p-1 rounded-full text-[#54656f] dark:text-[#aebac1] hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                  title="Next match"
+                  aria-label="Next match"
+                >
+                  <ChevronDown size={17} />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 cursor-pointer" onClick={onToggleProfile}>
@@ -206,15 +231,17 @@ export function ChatHeader({
             <>
               <button
                 onClick={() => initiateCall(partner.id, partner.name, partner.avatarUrl, "audio")}
+                disabled={isInCall}
                 className="p-2.5 sm:p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 active:bg-zinc-300/50 dark:active:bg-zinc-600/40 text-[#54656f] dark:text-[#aebac1] hover:text-zinc-950 dark:hover:text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Voice Call"
+                title={isInCall ? "Already in a call" : "Voice Call"}
               >
                 <Phone size={18} />
               </button>
               <button
                 onClick={() => initiateCall(partner.id, partner.name, partner.avatarUrl, "video")}
+                disabled={isInCall}
                 className="p-2.5 sm:p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-zinc-700/30 active:bg-zinc-300/50 dark:active:bg-zinc-600/40 text-[#54656f] dark:text-[#aebac1] hover:text-zinc-950 dark:hover:text-white transition-all cursor-pointer mr-1 disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Video Call"
+                title={isInCall ? "Already in a call" : "Video Call"}
               >
                 <Video size={18} />
               </button>
@@ -240,18 +267,7 @@ export function ChatHeader({
             </>
           )}
 
-          {isSearchOpen ? (
-            <button
-              onClick={() => {
-                if (setIsSearchOpen) setIsSearchOpen(false);
-                if (setSearchQuery) setSearchQuery("");
-              }}
-              className="p-2 sm:p-1.5 rounded-full hover:bg-zinc-200/55 dark:hover:bg-zinc-700/40 active:bg-zinc-300/50 dark:active:bg-zinc-600/40 text-red-500 hover:text-red-650 transition-colors cursor-pointer flex items-center justify-center font-bold text-base"
-              title="Close search"
-            >
-              <X size={18} />
-            </button>
-          ) : (
+          {!isSearchOpen && (
             <>
               <button
                 onClick={() => setIsSearchOpen && setIsSearchOpen(true)}

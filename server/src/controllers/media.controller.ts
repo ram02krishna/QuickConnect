@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { prisma } from "../config/prisma.js";
 import * as mediaService from "../services/media.service.js";
+import { cloudinary } from "../config/cloudinary.js";
 import { sendSuccess } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 
@@ -56,8 +57,34 @@ export async function downloadFile(req: Request, res: Response) {
   if (!url) throw new ApiError(400, "URL query parameter is required");
   if (!filename) throw new ApiError(400, "Filename query parameter is required");
 
+  // Derive Cloudinary resource_type and public_id from the stored URL so we can
+  // generate a signed fetch URL — plain fetch() returns 401 for raw resources.
+  let fetchUrl = url;
   try {
-    const response = await fetch(url);
+    const parsed = new URL(url);
+    // Cloudinary URL shape: /v1_1/<cloud>/[image|video|raw|auto]/upload/<...transforms>/v<ver>/<public_id>
+    const uploadMatch = parsed.pathname.match(
+      /\/(image|video|raw|auto)\/upload\/(?:.*?\/)?v\d+\/(.+)$/
+    );
+    if (uploadMatch) {
+      const resourceType = uploadMatch[1] === "auto" ? "raw" : uploadMatch[1];
+      const publicId = decodeURIComponent(uploadMatch[2]);
+
+      // Generate a signed URL valid for 5 minutes
+      fetchUrl = cloudinary.url(publicId, {
+        resource_type: resourceType as "image" | "video" | "raw",
+        sign_url: true,
+        expires_at: Math.floor(Date.now() / 1000) + 300, // 5 min
+        type: "upload",
+      });
+    }
+  } catch {
+    // If parsing fails, fall back to the original URL
+    fetchUrl = url;
+  }
+
+  try {
+    const response = await fetch(fetchUrl);
     if (!response.ok) {
       throw new ApiError(response.status, `Failed to fetch file from storage: ${response.statusText}`);
     }

@@ -13,6 +13,7 @@ export const SOCKET_EVENTS = {
 
   // messages
   MESSAGE_NEW: "message:new",
+  MESSAGE_DELETED_FOR_EVERYONE: "message:deleted-for-everyone",
   MESSAGE_DELIVERED: "message:delivered",
   MESSAGE_READ: "message:read",
   REACTION_CHANGED: "reaction:change",

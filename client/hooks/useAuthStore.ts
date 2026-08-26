@@ -8,6 +8,8 @@ interface UserProfile {
   email: string;
   avatarUrl: string | null;
   emailVerified: boolean;
+  bio?: string | null;
+  createdAt?: string;
 }
 
 interface AuthState {
